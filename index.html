@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#1B2A41">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MediAri">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0BAMAAADP4xsBAAAAMFBMVEX////7+/zu7/Hj5ejLz9SXnqh6g5BLg89td4ZbZndOWmsuPFEfLUQeLUMdLEIbKkEmfNZQAAACcUlEQVR42u3avY7TQBQF4OP4B61EEQlERbEFovYq0AeF7S2g3wAvwSPwECs2DxDQPkAQaREsmDfYGglpy8V2CMU6/pmZKNf4hupME8WTfBndmWOPRvHW2FcbgDRp0qRJkyZNmjRp0qRJkyZNmjRpq+Ves923+tdHzf5bbtpzHmvlUfNdmJn9WUuLfv9zQVap9dNatf4zM6/M1abxu3nhXDSP660trj5zYPTkw6rr9vbvi0Ztlja7UitIYRTgQjEyBv1OkV60pydVoMfl6892qVMEveknztAUQNibvusMzRx43JsOnaGZAUf96U2xvzTrkWIw7b9CEkdosiv4cX/6tSM0H4F7Cuvad4TmA/BIgY4OrdCsUmCqMerYCk2RIkg0gv7SCk0BURZ300+t0MyFpd5J26GZASMd2gxNscQgUaGt0GSAP9ahnxuhWQCR0sbsjhGas3pq+9JhOzTiwAjooB2a4lIYGMmzsQrNslNgJPRkE5pzADiVBkZCV+vhWzmZIzW6FZp8CS9Ro6sdQ3ETnGCsR08aoVnI9glSetS4MZ0Bx4p0uNnyfsUqrW8qGnRQb8+yS/hTRboa52r5q0OpRfSLKjTvgQdiWpLaaqAXP+SBkdFRXD5zP+fwpqoFQVw/acSBEdKvHMVRohv1PVamo6G1ELXousC+Nl2P1R9q05vQ4KH6KU7omFAtulzZHQIjpb3YnE+9Y61nnQMjpiedAyOmy9Ake6Bvtmd+J1q6y/qEzo1nqv+Pdp/zNQ9RT8zOa2tl9jjn4zSqNI//+CRNmjRpvbZzi/Nma89b1prPRtKkSZMmTZo0adKkSZMmTXpv7S/prfwro30pDwAAAABJRU5ErkJggg==">
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADABAMAAACg8nE0AAAAMFBMVEX////7+/vr7O7W2dzFyc+hp7CLk557hJFLg89zfYtmcIBQW20yP1QpN00hMEYbKkGa8xH6AAACa0lEQVR42u3aOU7DUBDG8clKmyJAi4TokRB9ROiJOEGUE0ScxEfICaIcgCUHQCg1UCBKhMTSZTUN9nvxODDjjBGIz5VlW/5B3vvbjqEQUr5LkQAAAAAAAAAAAAAAAAAAAAAAAAAAAADgJ4D3wtIy4kdMl49orfcbBHzTxPQjuuSbzk2BJ76pZwpM2Zb50BRYDNgQvAqnUbh6mXuHnSR3Prp9pS/OEUo7YEPaNw5tknGMxcAskdp0ZAyEQabMvgd2opUbNiZFE+AoWrllQ7BpApTjQWCZHZgA1Vp0ykEys64JUGqkzstnonLDZha1U1PrE1WNpulx6sTsEe0ZAdW01GYjopYRUNmPUvMGYUxUbFuVHJ/oym27JirtWAGn0crd0i162+xaVOejPB8SNc2AlNQmr94ntzaQkpo8M9Elkacmz0wE8NTkmYkAlpoiMxHAUlNkJrstNRKpKTKTAWeJ1BSZyYBEagtFZjLApTYkIhorMpMBLrVAm5nw2SP+eS+0mQmBY+8+oMtMCLjUHpSZCQGXWqDMTPr856emykwKxKndKzOTAnU3yrrMpICXmi4zKeClpstM/AXEpabLTAy41HpEhzkAS3e1Rg5AJZr5IVGxmwPgXxzKtTyAjlvdojyAXbfazAXYqPEpawq41FSZKV4KttmMNQbi1A5zAqrs3mAMRKnpMtO8mG1lyUwDdLJkpgF2s2SmAT5TayuBsvjI0gtlWfD3g++XFS9s3/zh5bsH7Dwna775/cdj8PeBAv65HgAAAAAA/AQgeHQcB6ufV7sYAzxVYAwAAAAAAAAAAAAAAAAAAAAAAL8L+AD2pgsl/WuViwAAAABJRU5ErkJggg==">
 <script>
 /* ===== COLE AQUI o firebaseConfig do seu projeto (Firebase > Configurações do projeto > Seus apps) ===== */
 window.FIREBASE_CONFIG = {
@@ -315,6 +322,8 @@ td.delta-c.up{color:var(--good)}td.delta-c.down{color:var(--bad)}td.delta-c.flat
 .lbox b{font-family:Newsreader,Georgia,serif;font-size:32px;color:var(--blue-deep)}
 .lbox p{color:var(--muted);margin:6px 0 20px}
 .lbox .status{margin:14px 0 0}
+.topbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin:-10px 0 10px;font-size:12px;color:var(--muted)}
+#who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -330,11 +339,13 @@ td.delta-c.up{color:var(--good)}td.delta-c.down{color:var(--bad)}td.delta-c.flat
       <button data-v="proposta">Proposta</button>
       <button data-v="calendario">Calendário</button>
       <button data-v="metricas">Métricas</button>
+      <button data-v="config">Configurações</button>
     </nav>
     <div class="side-foot">Uso interno. Os clientes não acessam este painel.</div>
   </aside>
 
   <main class="main"><div class="wrap">
+    <div class="topbar"><span id="who"></span><button class="btn sec small" id="bkLogout" type="button">Sair</button></div>
     <div id="banner" class="warn banner" hidden>Armazenamento indisponível nesta visualização. O que você digitar funciona, mas não será salvo ao fechar. Abra o painel pela sua conta para salvar clientes e orçamentos.</div>
 
     <!-- INÍCIO -->
@@ -520,7 +531,53 @@ td.delta-c.up{color:var(--good)}td.delta-c.down{color:var(--bad)}td.delta-c.flat
       <div id="mView"></div>
       <div class="card" id="mEditor" hidden style="margin-top:18px"></div>
     </section>
-    <div class="bk"><button class="btn sec small" id="bkExport" type="button">Baixar backup</button><label class="btn sec small" for="bkImport">Importar backup</label><input type="file" id="bkImport" accept="application/json" hidden><button class="btn sec small" id="bkLogout" type="button">Sair</button></div>
+
+    <!-- CONFIGURAÇÕES -->
+    <section id="v-config" hidden>
+      <div class="head"><div><p class="eyebrow">Ajustes do painel</p><h1>Configurações</h1><p>Aparência, padrões das propostas e dos orçamentos, backup e instalação do app.</p></div></div>
+      <div class="stack">
+        <div class="card">
+          <h2>Conta</h2>
+          <p class="hint" style="margin-top:0">Você entrou como <b id="cfgWho">-</b>. Só esta conta acessa os dados.</p>
+          <div class="actions"><button class="btn sec" id="cfgLogout" type="button">Sair da conta</button></div>
+        </div>
+        <div class="card">
+          <h2>Aparência</h2>
+          <label class="f" style="max-width:320px">Tema<select id="cfgTheme"><option value="auto">Automático (segue o aparelho)</option><option value="light">Claro</option><option value="dark">Escuro</option></select></label>
+          <p class="hint">Vale só para este aparelho.</p>
+        </div>
+        <div class="card">
+          <h2>Padrões para novos orçamentos e propostas</h2>
+          <p class="hint" style="margin-top:0">Preenchem automaticamente o que for novo. Propostas e orçamentos já salvos não mudam.</p>
+          <div class="stack" style="gap:12px">
+            <div class="row c2">
+              <label class="f">Margem de lucro (%)<input id="cf_margem" type="number" min="0" max="90" step="1" inputmode="decimal"></label>
+              <label class="f">Imposto (%)<input id="cf_imposto" type="number" min="0" max="50" step="0.1" inputmode="decimal"></label>
+            </div>
+            <div class="row c2">
+              <label class="f">Validade da proposta (dias)<input id="cf_validade" type="number" min="1" step="1" inputmode="numeric"></label>
+              <label class="f">Saudação da capa<select id="cf_saud"><option value="bem-vinda">Seja bem-vinda</option><option value="bem-vindo">Seja bem-vindo</option></select></label>
+            </div>
+            <label class="f">Início do serviço<input id="cf_prazo"></label>
+            <label class="f">Forma de pagamento<input id="cf_pay"></label>
+            <div class="actions"><button class="btn" id="cf_save" type="button">Salvar padrões</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Backup dos dados</h2>
+          <p class="hint" style="margin-top:0">Baixa um arquivo com clientes, orçamentos, métricas, imagens e textos do modelo. Guarde-o só no seu computador, porque ele contém dados dos clientes. Importar grava os dados do arquivo por cima dos atuais com o mesmo código.</p>
+          <div class="actions"><button class="btn" id="bkExport" type="button">Baixar backup</button><label class="btn sec" for="bkImport">Importar backup</label><input type="file" id="bkImport" accept="application/json" hidden></div>
+        </div>
+        <div class="card">
+          <h2>Instalar como app</h2>
+          <p class="hint" style="margin-top:0" id="instNote">O MediAri abre como um aplicativo, com ícone próprio e sem a barra do navegador.</p>
+          <div class="actions"><button class="btn" id="instBtn" type="button" hidden>Instalar o MediAri</button></div>
+          <div class="igroup" style="margin-top:12px"><div class="t">Notebook (Chrome ou Edge)</div><p class="hint">Clique no ícone de instalar na barra de endereço, à direita, ou em ⋮ e depois em Instalar MediAri.</p></div>
+          <div class="igroup"><div class="t">Android (Chrome)</div><p class="hint">Toque em ⋮ e depois em Instalar app (ou Adicionar à tela inicial).</p></div>
+          <div class="igroup"><div class="t">iPhone ou iPad (Safari)</div><p class="hint">Toque em Compartilhar e depois em Adicionar à Tela de Início. Precisa ser no Safari.</p></div>
+        </div>
+      </div>
+    </section>
   </div></main>
 </div>
 <div id="login" class="login" hidden><div class="lbox"><b>MediAri</b><p>Painel de uso interno.</p><button class="btn" id="loginBtn" type="button">Entrar com Google</button><p class="status" id="loginMsg" role="alert"></p></div></div>
@@ -589,7 +646,7 @@ document.addEventListener('click',function(e){
 
 /* ---------- orçamento ---------- */
 function newDraft(){
-  return {id:null,clientId:'',name:'',billing:'mensal',margin:40,tax:0,
+  return {id:null,clientId:'',name:'',billing:'mensal',margin:PREFS.margem==null?40:num(PREFS.margem),tax:PREFS.imposto==null?0:num(PREFS.imposto),
     lines:ROLES.map(function(r){return {key:r.key,label:r.label,deliv:r.deliv,unit:r.unit,cost:r.cost,qty:r.qty,custom:false}})};
 }
 function startNewBudget(){S.draft=newDraft();applySavedRates();paintBudgetForm();S.dirty=false;$('#budStatus').textContent=''}
@@ -838,7 +895,7 @@ function slotsOf(g){var a=[];for(var i=1;i<=g.max;i++)a.push(g.max===1?g.key:g.k
 function imgsOf(key){var g=IGROUPS.find(function(x){return x.key===key});return slotsOf(g).map(function(s){return PR.imgs[s]&&PR.imgs[s].img}).filter(function(i){return i&&i.complete&&i.naturalWidth})}
 function curBud(){return S.budgets.find(function(x){return x.id===S.propId})}
 function itemsFrom(b){return b.lines.filter(function(l){return num(l.qty)>0&&(l.deliv||l.label)}).map(function(l){return (l.deliv||l.label)+': '+num(l.qty)+' '+plural(l.unit,num(l.qty))}).join('\n')}
-function propDefaults(b){return {nome:b.clientName||'',saud:'bem-vinda',items:itemsFrom(b),prazo:'Início em até 5 dias úteis após o aceite.',validade:7,pagamento:'Pix ou boleto, conforme combinado.',obs:''}}
+function propDefaults(b){return {nome:b.clientName||'',saud:PREFS.saud||'bem-vinda',items:itemsFrom(b),prazo:PREFS.prazo||'Início em até 5 dias úteis após o aceite.',validade:PREFS.validade||7,pagamento:PREFS.pagamento||'Pix ou boleto, conforme combinado.',obs:''}}
 function readProp(){var p={};Object.keys(PF).forEach(function(k){p[k]=$('#'+PF[k]).value});p.validade=Math.max(1,Math.round(num(p.validade))||7);return p}
 function readModel(){var t={};Object.keys(MF).forEach(function(k){t[k]=$('#'+MF[k]).value});return t}
 function fillModel(t){Object.keys(MF).forEach(function(k){$('#'+MF[k]).value=t[k]==null?DEFAULT_T[k]:t[k]})}
@@ -1464,6 +1521,7 @@ function startListeners(){
     S.db.doc('config/postados').onSnapshot(function(s){CAL.posted=new Set(s.exists&&Array.isArray(s.data().keys)?s.data().keys:[]);renderCalStats();renderCalMonth();paintCmDone()},fail2);
     S.db.doc('config/proposalModel').onSnapshot(function(s){if(PR.modelDirty)return;fillModel(s.exists&&s.data().texts?s.data().texts:DEFAULT_T);schedulePreview()},fail2);
     S.db.collection('proposalImages').onSnapshot(function(s){var seen={};s.docs.forEach(function(d){var v=d.data();if(!v||!v.dataUrl)return;seen[d.id]=1;if(!PR.imgs[d.id]||PR.imgs[d.id].dataUrl!==v.dataUrl)setImage(d.id,v.name||'',v.dataUrl)});Object.keys(PR.imgs).forEach(function(k){if(!seen[k])delete PR.imgs[k]});renderImgBox();schedulePreview()},fail2);
+    S.db.doc('config/prefs').onSnapshot(function(s){PREFS=s.exists?s.data():{};fillPrefs();if(S.draft&&!S.draft.id&&!S.dirty){S.draft.margin=PREFS.margem==null?40:num(PREFS.margem);S.draft.tax=PREFS.imposto==null?0:num(PREFS.imposto);paintBudgetForm()}},fail2);
     S.db.doc('config/rates').onSnapshot(function(s){
       if(s.exists){savedRates=s.data();if(!S.ratesApplied&&S.draft&&!S.draft.id&&!S.dirty){applySavedRates();paintBudgetForm()}}
       S.ratesApplied=true;
@@ -1513,11 +1571,35 @@ function connect(){
   auth.onAuthStateChanged(function(u){
     if(!u){box.hidden=false;btn.hidden=false;return}
     if(String(u.email).toLowerCase()!==String(window.OWNER_EMAIL).toLowerCase()){auth.signOut();box.hidden=false;btn.hidden=false;msg.textContent='Esta conta não tem acesso.';return}
-    box.hidden=true;
+    box.hidden=true;$('#who').textContent=u.email;$('#cfgWho').textContent=u.email;
     if(started)return;started=true;
     S.db=firebase.firestore();startListeners();
   });
 }
+
+/* ---------- configurações ---------- */
+var PREFS={};
+function applyTheme(t){var r=document.documentElement;if(t==='light'||t==='dark')r.setAttribute('data-theme',t);else r.removeAttribute('data-theme')}
+(function(){var t='auto';try{t=localStorage.getItem('mediari-theme')||'auto'}catch(e){}applyTheme(t);$('#cfgTheme').value=t;
+  $('#cfgTheme').addEventListener('change',function(){applyTheme(this.value);try{localStorage.setItem('mediari-theme',this.value)}catch(e){}})})();
+$('#cfgLogout').addEventListener('click',function(){$('#bkLogout').click()});
+var CF={margem:'cf_margem',imposto:'cf_imposto',validade:'cf_validade',saud:'cf_saud',prazo:'cf_prazo',pagamento:'cf_pay'};
+function fillPrefs(){
+  var d={margem:40,imposto:0,validade:7,saud:'bem-vinda',prazo:'Início em até 5 dias úteis após o aceite.',pagamento:'Pix ou boleto, conforme combinado.'};
+  Object.keys(CF).forEach(function(k){var v=PREFS[k]==null?d[k]:PREFS[k];$('#'+CF[k]).value=v});
+}
+$('#cf_save').addEventListener('click',function(){
+  var o={margem:Math.min(90,Math.max(0,num($('#cf_margem').value))),imposto:Math.min(50,Math.max(0,num($('#cf_imposto').value))),validade:Math.max(1,Math.round(num($('#cf_validade').value))||7),saud:$('#cf_saud').value,prazo:$('#cf_prazo').value.trim(),pagamento:$('#cf_pay').value.trim()};
+  if(!S.db){toast('Entre primeiro.');return}
+  S.db.doc('config/prefs').set(o).then(function(){toast('Padrões salvos.')}).catch(fail);
+});
+var deferredInstall=null;
+function standalone(){return (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone===true}
+if(standalone())$('#instNote').textContent='O MediAri já está aberto como aplicativo neste aparelho.';
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredInstall=e;if(!standalone())$('#instBtn').hidden=false});
+window.addEventListener('appinstalled',function(){deferredInstall=null;$('#instBtn').hidden=true;toast('MediAri instalado.')});
+$('#instBtn').addEventListener('click',function(){if(!deferredInstall)return;deferredInstall.prompt();deferredInstall.userChoice.then(function(){deferredInstall=null;$('#instBtn').hidden=true}).catch(function(){})});
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(function(){});
 boot();connect();
 })();
 </script>
