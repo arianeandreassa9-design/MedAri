@@ -390,6 +390,7 @@ td.delta-c.up{color:var(--good)}td.delta-c.down{color:var(--bad)}td.delta-c.flat
               <label class="f">Impostos (% do preço final)<input id="b_tax" type="number" min="0" max="50" step="0.5" inputmode="decimal"></label>
             </div>
             <p class="hint">Exemplo: com 40% de margem e 6% de imposto, sobram 54% do preço para cobrir os custos.</p>
+            <div class="actions" style="margin-top:10px"><button class="btn sec small" id="b_defsave" type="button">Usar esta margem e este imposto nos próximos orçamentos</button></div>
           </div>
           <div class="card"><h2>Orçamentos salvos</h2><div id="savedBud"></div></div>
         </div>
@@ -477,6 +478,7 @@ td.delta-c.up{color:var(--good)}td.delta-c.down{color:var(--bad)}td.delta-c.flat
               <label class="f">Forma de pagamento<input id="p_pay"></label>
               <label class="f">Observações<textarea id="p_notes" style="min-height:64px"></textarea></label>
               <div class="actions"><button class="btn" id="p_pdf" disabled>Baixar PDF</button><button class="btn sec" id="p_save" disabled>Salvar proposta</button></div>
+              <div class="actions"><button class="btn sec small" id="p_defsave" type="button">Usar saudação, início, validade e pagamento nas próximas propostas</button></div>
               <p class="status" id="p_status"></p>
             </div>
           </div>
@@ -534,7 +536,7 @@ td.delta-c.up{color:var(--good)}td.delta-c.down{color:var(--bad)}td.delta-c.flat
 
     <!-- CONFIGURAÇÕES -->
     <section id="v-config" hidden>
-      <div class="head"><div><p class="eyebrow">Ajustes do painel</p><h1>Configurações</h1><p>Aparência, padrões das propostas e dos orçamentos, backup e instalação do app.</p></div></div>
+      <div class="head"><div><p class="eyebrow">Ajustes do painel</p><h1>Configurações</h1><p>Aparência, backup e instalação do app.</p></div></div>
       <div class="stack">
         <div class="card">
           <h2>Conta</h2>
@@ -545,23 +547,6 @@ td.delta-c.up{color:var(--good)}td.delta-c.down{color:var(--bad)}td.delta-c.flat
           <h2>Aparência</h2>
           <label class="f" style="max-width:320px">Tema<select id="cfgTheme"><option value="auto">Automático (segue o aparelho)</option><option value="light">Claro</option><option value="dark">Escuro</option></select></label>
           <p class="hint">Vale só para este aparelho.</p>
-        </div>
-        <div class="card">
-          <h2>Padrões para novos orçamentos e propostas</h2>
-          <p class="hint" style="margin-top:0">Preenchem automaticamente o que for novo. Propostas e orçamentos já salvos não mudam.</p>
-          <div class="stack" style="gap:12px">
-            <div class="row c2">
-              <label class="f">Margem de lucro (%)<input id="cf_margem" type="number" min="0" max="90" step="1" inputmode="decimal"></label>
-              <label class="f">Imposto (%)<input id="cf_imposto" type="number" min="0" max="50" step="0.1" inputmode="decimal"></label>
-            </div>
-            <div class="row c2">
-              <label class="f">Validade da proposta (dias)<input id="cf_validade" type="number" min="1" step="1" inputmode="numeric"></label>
-              <label class="f">Saudação da capa<select id="cf_saud"><option value="bem-vinda">Seja bem-vinda</option><option value="bem-vindo">Seja bem-vindo</option></select></label>
-            </div>
-            <label class="f">Início do serviço<input id="cf_prazo"></label>
-            <label class="f">Forma de pagamento<input id="cf_pay"></label>
-            <div class="actions"><button class="btn" id="cf_save" type="button">Salvar padrões</button></div>
-          </div>
         </div>
         <div class="card">
           <h2>Backup dos dados</h2>
@@ -1521,7 +1506,7 @@ function startListeners(){
     S.db.doc('config/postados').onSnapshot(function(s){CAL.posted=new Set(s.exists&&Array.isArray(s.data().keys)?s.data().keys:[]);renderCalStats();renderCalMonth();paintCmDone()},fail2);
     S.db.doc('config/proposalModel').onSnapshot(function(s){if(PR.modelDirty)return;fillModel(s.exists&&s.data().texts?s.data().texts:DEFAULT_T);schedulePreview()},fail2);
     S.db.collection('proposalImages').onSnapshot(function(s){var seen={};s.docs.forEach(function(d){var v=d.data();if(!v||!v.dataUrl)return;seen[d.id]=1;if(!PR.imgs[d.id]||PR.imgs[d.id].dataUrl!==v.dataUrl)setImage(d.id,v.name||'',v.dataUrl)});Object.keys(PR.imgs).forEach(function(k){if(!seen[k])delete PR.imgs[k]});renderImgBox();schedulePreview()},fail2);
-    S.db.doc('config/prefs').onSnapshot(function(s){PREFS=s.exists?s.data():{};fillPrefs();if(S.draft&&!S.draft.id&&!S.dirty){S.draft.margin=PREFS.margem==null?40:num(PREFS.margem);S.draft.tax=PREFS.imposto==null?0:num(PREFS.imposto);paintBudgetForm()}},fail2);
+    S.db.doc('config/prefs').onSnapshot(function(s){PREFS=s.exists?s.data():{};if(S.draft&&!S.draft.id&&!S.dirty){S.draft.margin=PREFS.margem==null?40:num(PREFS.margem);S.draft.tax=PREFS.imposto==null?0:num(PREFS.imposto);paintBudgetForm()}},fail2);
     S.db.doc('config/rates').onSnapshot(function(s){
       if(s.exists){savedRates=s.data();if(!S.ratesApplied&&S.draft&&!S.draft.id&&!S.dirty){applySavedRates();paintBudgetForm()}}
       S.ratesApplied=true;
@@ -1583,16 +1568,9 @@ function applyTheme(t){var r=document.documentElement;if(t==='light'||t==='dark'
 (function(){var t='auto';try{t=localStorage.getItem('mediari-theme')||'auto'}catch(e){}applyTheme(t);$('#cfgTheme').value=t;
   $('#cfgTheme').addEventListener('change',function(){applyTheme(this.value);try{localStorage.setItem('mediari-theme',this.value)}catch(e){}})})();
 $('#cfgLogout').addEventListener('click',function(){$('#bkLogout').click()});
-var CF={margem:'cf_margem',imposto:'cf_imposto',validade:'cf_validade',saud:'cf_saud',prazo:'cf_prazo',pagamento:'cf_pay'};
-function fillPrefs(){
-  var d={margem:40,imposto:0,validade:7,saud:'bem-vinda',prazo:'Início em até 5 dias úteis após o aceite.',pagamento:'Pix ou boleto, conforme combinado.'};
-  Object.keys(CF).forEach(function(k){var v=PREFS[k]==null?d[k]:PREFS[k];$('#'+CF[k]).value=v});
-}
-$('#cf_save').addEventListener('click',function(){
-  var o={margem:Math.min(90,Math.max(0,num($('#cf_margem').value))),imposto:Math.min(50,Math.max(0,num($('#cf_imposto').value))),validade:Math.max(1,Math.round(num($('#cf_validade').value))||7),saud:$('#cf_saud').value,prazo:$('#cf_prazo').value.trim(),pagamento:$('#cf_pay').value.trim()};
-  if(!S.db){toast('Entre primeiro.');return}
-  S.db.doc('config/prefs').set(o).then(function(){toast('Padrões salvos.')}).catch(fail);
-});
+function savePrefs(o,msg){if(!S.db){toast('Entre primeiro.');return}S.db.doc('config/prefs').set(o,{merge:true}).then(function(){toast(msg)}).catch(fail)}
+$('#b_defsave').addEventListener('click',function(){savePrefs({margem:Math.min(90,Math.max(0,num($('#b_margin').value))),imposto:Math.min(50,Math.max(0,num($('#b_tax').value)))},'Margem e imposto salvos como padrão.')});
+$('#p_defsave').addEventListener('click',function(){var f=readProp();savePrefs({saud:f.saud,prazo:f.prazo.trim(),validade:f.validade,pagamento:f.pagamento.trim()},'Padrões da proposta salvos.')});
 var deferredInstall=null;
 function standalone(){return (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone===true}
 if(standalone())$('#instNote').textContent='O MediAri já está aberto como aplicativo neste aparelho.';
