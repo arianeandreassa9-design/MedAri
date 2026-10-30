@@ -346,7 +346,7 @@ td.delta-c.up{color:var(--good)}td.delta-c.down{color:var(--bad)}td.delta-c.flat
 .pd-row:first-child{border-top:0}
 .pd-chk{padding-top:8px}
 .pd-chk input{width:18px;height:18px;padding:0}
-.pd-txt{min-height:0;resize:none;overflow:hidden;line-height:1.5;padding:7px 10px}
+.pd-txt{min-height:40px;resize:none;overflow:hidden;line-height:1.5;padding:7px 10px}
 .pd-row.done .pd-txt{text-decoration:line-through;color:var(--muted)}
 /* scripts */
 .sc-card{padding:0;margin-bottom:12px}
@@ -2479,6 +2479,14 @@ if(c&&c.use){c.use('db').then(function(d){
     else if(!s.exists){local();save()}
   },function(){local()});paint();
 }).catch(local)}else local();
+})();
+</script>
+<script>
+(function(){
+function fit(){var l=document.getElementById('pdList');if(!l)return;Array.prototype.forEach.call(l.querySelectorAll('.pd-txt'),function(t){t.style.height='auto';var s=t.scrollHeight;t.style.height=(s>0?Math.max(s,40):40)+'px'})}
+document.getElementById('nav').addEventListener('click',function(e){var b=e.target.closest('button');if(b&&b.dataset.v==='pendencias'){setTimeout(fit,0);setTimeout(fit,150)}});
+window.addEventListener('resize',fit);
+var l=document.getElementById('pdList');if(l&&window.MutationObserver)new MutationObserver(function(){setTimeout(fit,0)}).observe(l,{childList:true});
 })();
 </script>
 </body>
