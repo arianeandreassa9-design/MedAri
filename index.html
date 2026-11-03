@@ -459,6 +459,7 @@ td.delta-c.up{color:var(--good)}td.delta-c.down{color:var(--bad)}td.delta-c.flat
     <div class="brand"><img class="blogo" id="sideLogo" alt="" width="34" height="34"><div class="bt"><b>MediAri</b><i></i><span>Painel da agência</span></div></div>
     <nav class="nav" id="nav" aria-label="Seções">
       <button data-v="inicio" aria-current="page">Início</button>
+      <button data-v="agenda">Agenda</button>
       <button data-v="orcamento">Orçamento</button>
       <button data-v="clientes">Clientes <small id="nCli">0</small></button>
       <button data-v="proposta">Proposta</button>
@@ -492,6 +493,12 @@ td.delta-c.up{color:var(--good)}td.delta-c.down{color:var(--bad)}td.delta-c.flat
         <div class="card"><h2>Últimos orçamentos</h2><div id="homeBud"></div></div>
         <div class="card" style="grid-column:1/-1"><h2>Próximos pagamentos</h2><div id="homePay"></div></div>
       </div>
+    </section>
+
+    <!-- AGENDA -->
+    <section id="v-agenda" hidden>
+      <div class="head"><div><p class="eyebrow">Compromissos</p><h1>Agenda</h1><p>Reuniões, gravações e entregas. Clique num dia para criar um evento.</p></div><div><button class="btn" id="agNew" type="button">Novo evento</button></div></div>
+      <div id="agBody"></div>
     </section>
 
     <!-- ORÇAMENTO -->
@@ -649,7 +656,8 @@ td.delta-c.up{color:var(--good)}td.delta-c.down{color:var(--bad)}td.delta-c.flat
 
     <!-- MÉTRICAS -->
     <section id="v-metricas" hidden>
-      <div class="head"><div><p class="eyebrow">Desempenho dos clientes</p><h1>Métricas</h1><p>Seguidores, engajamento e posts de cada cliente, mês a mês, com a variação em relação ao mês anterior.</p></div></div>
+      <div class="head"><div><p class="eyebrow">Desempenho dos clientes</p><h1>Métricas</h1><p>Seguidores, engajamento e posts de cada cliente, mês a mês, com a variação em relação ao mês anterior.</p></div><div class="actions"><button class="btn" id="mClose" type="button">Fechamento do mês</button><button class="btn sec" id="mXlsx" type="button">Baixar planilha (.xlsx)</button></div></div>
+      <div class="card" id="mCloseCard" hidden style="margin-bottom:18px"></div>
       <div class="mpills" id="mPills"></div>
       <div class="card" id="mAdd" hidden style="margin-bottom:18px">
         <h2>Adicionar cliente às métricas</h2>
@@ -1520,7 +1528,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&$('#calModa
 $('#cmDone').addEventListener('click',function(){if(CAL.open){togglePosted(CAL.open);paintCmDone()}});
 
 /* ---------- métricas ---------- */
-var M={sel:'__all',editing:false,rowN:0};
+var M={sel:'__all',editing:false,rowN:0,mi:{}};
 var DEFAULT_METRICS=[['Seguidores','num'],['Seguindo','num'],['Posts','num'],['Engajamento','%'],['Média de curtidas','num'],['Média de comentários','num']].map(function(a){return {label:a[0],unit:a[1],value:null}});
 function mDoc(id){return S.metrics.find(function(d){return d.id===(id||M.sel)})}
 function fmtN(n){return new Intl.NumberFormat('pt-BR').format(n)}
@@ -1553,7 +1561,7 @@ function postsHtml(list,kind){
   }).join('');
 }
 function clientHtml(d){
-  var c=mCols(d),last=c[c.length-1],prev=c[c.length-2];
+  var c=mCols(d),ix=(M.mi[d.id]!=null&&M.mi[d.id]<c.length)?M.mi[d.id]:c.length-1,isCur=ix===c.length-1,last=c[ix],prev=c[ix-1];
   var has=(last.metrics||[]).some(function(m){return m.value!=null});
   var crm='<option value="">Sem vínculo</option>'+S.clients.map(function(x){return '<option value="'+esc(x.id)+'"'+(x.id===d.clientId?' selected':'')+'>'+esc(x.nome)+'</option>'}).join('');
   var out='<div class="mhead"><div><h2 class="mname">'+esc(d.name)+'</h2><p class="msub">'+(d.month?esc(d.month):'Período não informado')+'</p></div><div class="actions"><button class="btn" data-medit>Atualizar números</button><button class="btn danger" data-mdel>Excluir</button></div></div>'+
@@ -1563,7 +1571,8 @@ function clientHtml(d){
     var pm=prev?mFind(prev,m.label):null;
     return '<div class="mtile"><small>'+esc(m.label)+'</small><b>'+fmtM(m.value,m.unit)+'</b>'+deltaPill(pm?pct(m.value,pm.value):null)+'</div>';
   }).join('')+'</div>';
-  out+='<div class="pgrid" style="margin-bottom:18px"><div class="card"><div class="ptitle"><i class="dot good"></i><h3>Melhores posts</h3></div>'+postsHtml(d.bestPosts,'good')+'</div><div class="card"><div class="ptitle"><i class="dot bad"></i><h3>Piores posts</h3></div>'+postsHtml(d.worstPosts,'bad')+'</div></div>';
+  if(c.length>1)out+='<div class="mlink"><label for="mMonth">Ver outro mês</label><select id="mMonth">'+c.map(function(x,i){return '<option value="'+i+'"'+(i===ix?' selected':'')+'>'+esc(x.month||'—')+(i===c.length-1?' (atual)':'')+'</option>'}).join('')+'</select></div>';
+  out+=!isCur?'<p class="hint" style="margin-bottom:18px">Melhores e piores posts ficam só no mês mais recente.</p>':'<div class="pgrid" style="margin-bottom:18px"><div class="card"><div class="ptitle"><i class="dot good"></i><h3>Melhores posts</h3></div>'+postsHtml(d.bestPosts,'good')+'</div><div class="card"><div class="ptitle"><i class="dot bad"></i><h3>Piores posts</h3></div>'+postsHtml(d.worstPosts,'bad')+'</div></div>';
   var cols=c.slice(-6),order=[];
   for(var i=cols.length-1;i>=0;i--)(cols[i].metrics||[]).forEach(function(m){if(order.indexOf(m.label)<0)order.push(m.label)});
   var head='<tr><th>Métrica</th>'+cols.map(function(col,i){return '<th class="r'+(i===cols.length-1?' cur':'')+'">'+esc(col.month||'—')+'</th>'}).join('')+(cols.length>1?'<th class="r">Variação</th>':'')+'</tr>';
@@ -1654,7 +1663,7 @@ $('#mAddBtn').addEventListener('click',function(){
 });
 $('#v-metricas').addEventListener('click',function(e){
   var t=e.target;
-  var pick=t.closest('[data-m]');if(pick){M.sel=pick.dataset.m;closeMetricEditor();renderMetricsView();return}
+  var pick=t.closest('[data-m]');if(pick){M.sel=pick.dataset.m;delete M.mi[M.sel];closeMetricEditor();renderMetricsView();return}
   if(t.closest('[data-madd]')){openMetricAdd();return}
   if(t.closest('[data-medit]')){openMetricEditor();return}
   var del2=t.closest('[data-mdel]');
@@ -1666,10 +1675,216 @@ $('#v-metricas').addEventListener('click',function(e){
   if(t.closest('#me_close')){closeMetricEditor();return}
 });
 $('#v-metricas').addEventListener('change',function(e){
+  if(e.target.id==='mMonth'){var dd=mDoc();if(dd){M.mi[dd.id]=+e.target.value;renderMetricsView()}return}
   if(e.target.id!=='mLink')return;
   var d=mDoc();if(!d)return;
   var data=strip(d);data.clientId=e.target.value;
   put('metrics',d.id,data).then(function(){toast(data.clientId?'Vinculado ao cadastro.':'Vínculo removido.')}).catch(fail);
+});
+/* ---------- leitura de PDF e prints com IA ---------- */
+var AI_MODEL='claude-sonnet-5-5',AI_RES=[];
+var AI_TOOL={name:'registrar_metricas',description:'Registra os números lidos do relatório InsTrack e dos prints de posts.',input_schema:{type:'object',properties:{
+  perfil:{type:['string','null'],description:'@handle do perfil, sem o @'},
+  periodo:{type:['string','null'],description:'Período no formato 04/out a 02/nov/2026'},
+  seguidores:{type:['number','null']},seguindo:{type:['number','null']},posts:{type:['number','null']},
+  engajamento_pct:{type:['number','null'],description:'Engagement Rate em %, só o número'},
+  media_curtidas:{type:['number','null']},media_comentarios:{type:['number','null']},
+  medias_estimadas:{type:'boolean',description:'true se média de curtidas ou comentários foi lida de um gráfico'},
+  melhor_post:{type:['object','null'],properties:{legenda:{type:'string'},curtidas:{type:['number','null']}}},
+  pior_post:{type:['object','null'],properties:{legenda:{type:'string'},curtidas:{type:['number','null']}}},
+  observacoes:{type:'string',description:'Avisos curtos: empates, posts sem curtidas visíveis, valores incertos'}},
+  required:['perfil','periodo','seguidores','seguindo','posts','engajamento_pct','media_curtidas','media_comentarios','medias_estimadas','melhor_post','pior_post','observacoes']}};
+var AI_PROMPT='Você lê relatórios mensais de Instagram do InsTrack (PDF) e prints de posts, em português do Brasil. Use SOMENTE o que está visível no arquivo; se algum dado não aparecer, devolva null. Nunca invente números.\n'+
+'Relatório InsTrack: capa com @handle e período; página 2 com Followers, Following, Posts e Engagement Rate (use o valor atual, não a variação). Average Likes e Average Comments só aparecem em gráfico: leia o valor do último ponto do eixo Y, aproximado, e marque medias_estimadas=true.\n'+
+'Prints de posts: coração com número = curtidas, balão = comentários. Melhor post = mais curtidas; pior = menos curtidas. Em caso de empate, cite os dois na observação. Posts que mostram só comentários, sem curtidas visíveis, não entram na comparação; avise na observação. Se o arquivo for só print de posts, deixe os números do relatório como null.\n'+
+'Período no formato "04/out a 02/nov/2026". Chame a ferramenta registrar_metricas.';
+function aiKey(){try{return localStorage.getItem('mediari-ak')||''}catch(e){return ''}}
+function fileB64(f){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){ok(String(r.result).split(',')[1])};r.onerror=no;r.readAsDataURL(f)})}
+function imgB64(f){return new Promise(function(ok,no){
+  var u=URL.createObjectURL(f),im=new Image();
+  im.onload=function(){var k=Math.min(1,1568/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',0.88).split(',')[1])};
+  im.onerror=function(){URL.revokeObjectURL(u);no(new Error('não consegui abrir a imagem '+f.name+' (HEIC não é aceito, use print ou JPG/PNG)'))};im.src=u})}
+function aiCall(f,key){
+  var isPdf=/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name);
+  return (isPdf?fileB64(f):imgB64(f)).then(function(b64){
+    var block=isPdf?{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}}:{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}};
+    return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:AI_MODEL,max_tokens:2000,tools:[AI_TOOL],tool_choice:{type:'tool',name:'registrar_metricas'},messages:[{role:'user',content:[block,{type:'text',text:AI_PROMPT}]}]})});
+  }).then(function(r){return r.json().then(function(j){
+    if(!r.ok){var m=(j&&j.error&&j.error.message)||('erro '+r.status);if(r.status===401)m='chave inválida';if(r.status===429)m='limite de uso atingido, tente de novo em instantes';throw new Error(m)}
+    var t=(j.content||[]).find(function(c){return c.type==='tool_use'});if(!t)throw new Error('a IA não devolveu os números');return t.input})});
+}
+function guessDoc(handle){
+  var h=String(handle||'').toLowerCase().replace(/[^a-z0-9]/g,'');if(!h)return '';
+  var best='',bl=0;
+  S.metrics.forEach(function(d){
+    String(d.name).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').split(/[^a-z0-9]+/).forEach(function(t){
+      if(t.length>=4&&!/^(dra|dr|midia)$/.test(t)&&h.indexOf(t)>=0&&t.length>bl){best=d.id;bl=t.length}});
+  });
+  return best;
+}
+function aiRender(){
+  var opts='<option value="">Ignorar</option>'+mOrder().map(function(d){return '<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>'}).join('');
+  $('#fc_res').innerHTML=AI_RES.map(function(r,i){
+    if(r.err)return '<div class="empty" style="padding:10px;margin-bottom:8px"><b>'+esc(r.name)+'</b>'+esc(r.err)+'</div>';
+    var x=r.data,bits=[];
+    if(x.perfil)bits.push('@'+esc(x.perfil));if(x.periodo)bits.push(esc(x.periodo));
+    [['Seguidores',x.seguidores],['Seguindo',x.seguindo],['Posts',x.posts],['Engajamento',x.engajamento_pct==null?null:x.engajamento_pct+'%'],['Média de curtidas',x.media_curtidas],['Média de comentários',x.media_comentarios]].forEach(function(p){if(p[1]!=null)bits.push(p[0]+': '+esc(p[1]))});
+    if(x.melhor_post&&x.melhor_post.legenda)bits.push('Melhor: “'+esc(x.melhor_post.legenda.slice(0,60))+'” ('+esc(x.melhor_post.curtidas==null?'?':x.melhor_post.curtidas)+')');
+    if(x.pior_post&&x.pior_post.legenda)bits.push('Pior: “'+esc(x.pior_post.legenda.slice(0,60))+'” ('+esc(x.pior_post.curtidas==null?'?':x.pior_post.curtidas)+')');
+    return '<div class="card" style="padding:12px;margin-bottom:8px"><b>'+esc(r.name)+'</b><div style="font-size:13px;color:var(--muted);margin:6px 0">'+bits.join(' · ')+'</div>'+
+      (x.medias_estimadas?'<div style="font-size:12.5px;color:var(--warn)">Médias lidas de gráfico: valores aproximados.</div>':'')+(x.observacoes?'<div style="font-size:12.5px;color:var(--muted)">'+esc(x.observacoes)+'</div>':'')+
+      '<label class="f" style="max-width:320px;margin-top:8px">Perfil no app<select data-ri="'+i+'">'+opts.replace('value="'+esc(r.doc)+'"','value="'+esc(r.doc)+'" selected')+'</select></label></div>';
+  }).join('')+(AI_RES.some(function(r){return !r.err})?'<div class="actions"><button class="btn" id="fc_apply" type="button">Preencher o fechamento com esses números</button></div>':'');
+}
+function aiRead(){
+  var files=[].slice.call($('#fc_files').files),key=$('#fc_key').value.trim()||aiKey();
+  if(!files.length){toast('Escolha os PDFs ou prints.');return}
+  if(!key){toast('Cole a chave da API da Anthropic.');$('#fc_key').focus();return}
+  try{localStorage.setItem('mediari-ak',key)}catch(e){}
+  AI_RES=[];var st=$('#fc_ast');$('#fc_read').disabled=true;
+  files.reduce(function(p,f,i){return p.then(function(){
+    st.textContent='Lendo '+(i+1)+' de '+files.length+': '+f.name+'…';
+    return aiCall(f,key).then(function(data){AI_RES.push({name:f.name,data:data,doc:guessDoc(data.perfil)})}).catch(function(e){AI_RES.push({name:f.name,err:(e&&e.message)||'falha na leitura'})});
+  })},Promise.resolve()).then(function(){st.textContent='Leitura concluída. Confira os números antes de preencher.';$('#fc_read').disabled=false;aiRender()});
+}
+function aiApply(){
+  var n=0;
+  AI_RES.forEach(function(r){
+    if(r.err||!r.doc)return;var box=$('#mCloseCard [data-fc="'+r.doc+'"]');if(!box)return;var x=r.data;
+    if(x.periodo&&!$('#fc_month').value.trim())$('#fc_month').value=x.periodo+' (InsTrack)';
+    [x.seguidores,x.seguindo,x.posts,x.engajamento_pct,x.media_curtidas,x.media_comentarios].forEach(function(v,i){if(v!=null){var el=box.querySelector('[data-fk="'+i+'"]');if(el)el.value=v}});
+    [['best',x.melhor_post],['worst',x.pior_post]].forEach(function(t){if(t[1]&&t[1].legenda){var row=box.querySelector('[data-fp="'+t[0]+'"]');row.querySelector('.cp').value=t[1].legenda;if(t[1].curtidas!=null)row.querySelector('.cv').value=t[1].curtidas}});
+    box.open=true;box.querySelector('[data-fon]').checked=true;n++;
+  });
+  toast(n?('Números colocados em '+n+' perfil(is). Revise e salve.'):'Escolha o perfil de cada arquivo.');
+}
+
+/* ---------- fechamento do mês + planilha ---------- */
+var MKEYS=['seguidores','seguindo','posts','engajamento','média de curtidas','média de comentários'];
+var MLABS=['Seguidores','Seguindo','Posts','Engajamento (%)','Média de curtidas','Média de comentários'];
+function mval(col,k){if(!col)return null;var m=(col.metrics||[]).find(function(x){return String(x.label).toLowerCase().indexOf(k)===0&&(k!=='posts'||String(x.label).toLowerCase()==='posts')});return m&&typeof m.value==='number'?m.value:null}
+function blank(v){return v==null||String(v).trim()===''}
+function openClose(){
+  closeMetricEditor();
+  var rows=mOrder().map(function(d){
+    var crm=S.clients.find(function(x){return x.id===d.clientId});
+    var on=!(crm&&crm.status!=='Ativo');
+    var cur=mCols(d).slice(-1)[0];
+    var inputs=MKEYS.map(function(k,i){var v=mval(cur,k);return '<label class="f">'+MLABS[i]+'<input type="number" step="any" inputmode="decimal" data-fk="'+i+'" placeholder="'+(v==null?'':esc(String(v).replace('.',',')))+'"></label>'}).join('');
+    function post(kind,t){return '<div class="erow" data-fp="'+kind+'"><input class="cp" aria-label="'+t+' legenda" placeholder="'+t+': legenda do post"><input class="cv" type="number" inputmode="numeric" aria-label="'+t+' curtidas" placeholder="Curtidas"><input class="lk" aria-label="'+t+' link" placeholder="Link (opcional)"></div>'}
+    return '<details class="card" data-fc="'+esc(d.id)+'" style="margin-bottom:10px"'+(on?' open':'')+'><summary style="cursor:pointer;font-weight:600">'+esc(d.name)+' <small style="color:var(--muted);font-weight:400">último: '+esc(d.month||'sem números')+'</small></summary>'+
+      '<label class="ag-chk" style="display:flex;gap:8px;align-items:center;margin:10px 0"><input type="checkbox" data-fon'+(on?' checked':'')+' style="width:auto"> Incluir neste fechamento</label>'+
+      '<div class="row c3" style="gap:10px">'+inputs+'</div>'+post('best','Melhor post')+post('worst','Pior post')+'</details>';
+  }).join('');
+  var c=$('#mCloseCard');
+  c.innerHTML='<h2>Fechamento do mês</h2><p class="hint" style="margin-top:0">Preencha só o que veio do InsTrack. O número cinza de cada campo é o do período anterior. Média de curtidas e de comentários vêm de gráfico, então são estimados.</p>'+
+    '<div class="card" style="margin-bottom:14px;background:var(--bg)"><h3 style="margin:0 0 6px">Ler PDF e prints com IA</h3><p class="hint" style="margin-top:0">Anexe o relatório do InsTrack (PDF) e os prints dos posts. A IA lê, você confere e manda para os campos abaixo. Usa a sua chave da API da Anthropic (cobrança por uso), guardada só neste aparelho. Os arquivos vão direto para a Anthropic.</p>'+
+    '<div class="row c2"><label class="f">Arquivos<input type="file" id="fc_files" multiple accept=".pdf,application/pdf,image/*"></label><label class="f">Chave da API (sk-ant-…)<input type="password" id="fc_key" autocomplete="off" placeholder="'+(aiKey()?'chave salva neste aparelho':'cole aqui')+'"></label></div>'+
+    '<div class="actions" style="margin-top:10px"><button class="btn" id="fc_read" type="button">Ler com IA</button>'+(aiKey()?'<button class="btn sec small" id="fc_forget" type="button">Esquecer chave</button>':'')+'</div><p class="status" id="fc_ast"></p><div id="fc_res" style="margin-top:8px"></div></div>'+
+    '<label class="f" style="max-width:420px">Período do fechamento<input id="fc_month" placeholder="Ex.: 04/out a 02/nov/2026 (InsTrack)"></label><div style="margin-top:14px">'+rows+'</div>'+
+    '<div class="actions" style="margin-top:12px"><button class="btn" id="fc_save">Salvar fechamento</button><button class="btn sec" id="fc_xlsx">Salvar e baixar planilha</button><button class="btn sec" id="fc_cancel">Fechar</button></div>';
+  c.hidden=false;$('#fc_month').focus();c.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function saveClose(thenXlsx){
+  var month=$('#fc_month').value.trim();
+  if(!month){toast('Informe o período do fechamento.');$('#fc_month').focus();return}
+  var jobs=[],n=0;
+  $$('#mCloseCard [data-fc]').forEach(function(box){
+    if(!box.querySelector('[data-fon]').checked)return;
+    var d=mDoc(box.dataset.fc);if(!d)return;
+    var vals=$$('[data-fk]',box).map(function(i){return blank(i.value)?null:num(i.value)});
+    if(vals.every(function(v){return v==null}))return;
+    var cur=mCols(d).slice(-1)[0],same=d.month===month,data=strip(d);
+    if(!same&&d.month&&(d.metrics||[]).some(function(m){return m.value!=null}))data.history=(d.history||[]).concat([{month:d.month,metrics:d.metrics}]);
+    var base=(d.metrics&&d.metrics.length?d.metrics:DEFAULT_METRICS).map(function(m){return Object.assign({},m)});
+    MKEYS.forEach(function(k,i){
+      var m=base.find(function(x){return String(x.label).toLowerCase().indexOf(k)===0&&(k!=='posts'||String(x.label).toLowerCase()==='posts')});
+      if(!m){m={label:MLABS[i],unit:i===3?'%':'num',value:null};base.push(m)}
+      m.value=vals[i]!=null?vals[i]:(same?m.value:null);
+    });
+    function posts(kind){var out=[];$$('[data-fp="'+kind+'"]',box).forEach(function(r){var cp=r.querySelector('.cp').value.trim();if(!cp)return;var cv=r.querySelector('.cv').value;out.push({caption:cp,metricLabel:'Curtidas',metricValue:cv===''?null:num(cv),link:r.querySelector('.lk').value.trim(),imageUrl:''})});return out}
+    var pb=posts('best'),pw=posts('worst');
+    data.month=month;data.metrics=base;data.bestPosts=pb.length?pb:(same?(d.bestPosts||[]):[]);data.worstPosts=pw.length?pw:(same?(d.worstPosts||[]):[]);data.example=false;data.updatedAt=new Date().toISOString();
+    jobs.push(put('metrics',d.id,data));n++;
+  });
+  if(!n){toast('Preencha ao menos um número.');return}
+  Promise.all(jobs).then(function(){$('#mCloseCard').hidden=true;$('#mCloseCard').innerHTML='';M.mi={};renderMetricsView();toast('Fechamento salvo ('+n+' perfis).');if(thenXlsx)setTimeout(exportXlsx,300)}).catch(fail);
+}
+function loadExcelJS(){
+  if(window.ExcelJS)return Promise.resolve();
+  return new Promise(function(ok,no){var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';s.onload=ok;s.onerror=function(){no(new Error('sem conexão com a biblioteca de planilha'))};document.head.appendChild(s)});
+}
+function exportXlsx(){
+  var withNum=S.metrics.filter(function(d){return d.month&&(d.metrics||[]).some(function(m){return m.value!=null})});
+  if(!withNum.length){toast('Nenhum número lançado ainda.');return}
+  var cnt={};withNum.forEach(function(d){cnt[d.month]=(cnt[d.month]||0)+1});
+  var curP=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]})[0];
+  var list=withNum.filter(function(d){return d.month===curP}).sort(function(a,b){return String(a.name).localeCompare(String(b.name),'pt-BR')});
+  var prevP=null;
+  var data=list.map(function(d){var c=mCols(d),cu=c[c.length-1],pr=c[c.length-2]||null;if(pr&&!prevP)prevP=pr.month;
+    return {d:d,cur:MKEYS.map(function(k){return mval(cu,k)}),prev:pr?MKEYS.map(function(k){return mval(pr,k)}):MKEYS.map(function(){return null})}});
+  toast('Montando a planilha…');
+  loadExcelJS().then(function(){
+    var wb=new ExcelJS.Workbook(),F='Arial',NAVY='FF1F3864',thin={style:'thin',color:{argb:'FFBFBFBF'}},BD={top:thin,left:thin,bottom:thin,right:thin};
+    function hdr(c){c.font={name:F,bold:true,color:{argb:'FFFFFFFF'},size:11};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=BD}
+    function cell(c,fmt,bold){c.font={name:F,size:11,bold:!!bold};c.border=BD;if(fmt)c.numFmt=fmt}
+    var ws=wb.addWorksheet('Resumo',{views:[{showGridLines:false}]});
+    ws.getCell('A1').value='MediAri — Relatório Mensal de Métricas';ws.getCell('A1').font={name:F,bold:true,size:14,color:{argb:NAVY}};
+    ws.getCell('A2').value='Período: '+curP+(prevP?'  ·  Comparação com '+prevP:'');ws.getCell('A2').font={name:F,italic:true,size:10,color:{argb:'FF666666'}};
+    ['Perfil'].concat(MLABS,['Var. Seguidores (%)','Var. Engajamento (p.p.)']).forEach(function(h,i){var c=ws.getCell(4,i+1);c.value=h;hdr(c)});
+    data.forEach(function(x,r){
+      var row=5+r;ws.getCell(row,1).value=x.d.name;cell(ws.getCell(row,1),null,true);
+      x.cur.forEach(function(v,i){var c=ws.getCell(row,2+i);c.value=v;cell(c,i>=3?'#,##0.0':'#,##0')});
+      var vs=ws.getCell(row,8),ve=ws.getCell(row,9),pf=x.prev[0],pe=x.prev[3];
+      vs.value=(pf&&x.cur[0]!=null)?{formula:'(B'+row+'-'+pf+')/'+pf}:'n/d';cell(vs,'+0.0%;-0.0%;0.0%');
+      ve.value=(pe!=null&&x.cur[3]!=null)?{formula:'E'+row+'-'+pe}:'n/d';cell(ve,'+0.00;-0.00;0.00');
+    });
+    [16,12,11,9,15,16,18,16,18].forEach(function(w,i){ws.getColumn(i+1).width=w});
+    var used={};
+    data.forEach(function(x){
+      var nm=String(x.d.name).replace(/[\\\/\?\*\[\]:]/g,'').slice(0,31)||'Perfil';while(used[nm.toLowerCase()])nm=nm.slice(0,28)+'_'+Math.floor(Math.random()*90+10);used[nm.toLowerCase()]=1;
+      var s=wb.addWorksheet(nm,{views:[{showGridLines:false}]});
+      s.getCell('A1').value=x.d.name;s.getCell('A1').font={name:F,bold:true,size:14,color:{argb:NAVY}};
+      s.getCell('A2').value='Período atual: '+curP+(prevP?'  ·  Período anterior: '+prevP:'');s.getCell('A2').font={name:F,italic:true,size:10,color:{argb:'FF666666'}};
+      ['Métrica','Mês Anterior','Mês Atual','Variação (%)'].forEach(function(h,i){var c=s.getCell(4,i+1);c.value=h;hdr(c)});
+      MLABS.forEach(function(lb,i){
+        var r=5+i;s.getCell(r,1).value=lb;cell(s.getCell(r,1),null,true);
+        var b=s.getCell(r,2),c=s.getCell(r,3),v=s.getCell(r,4),f=i>=3?'#,##0.00':'#,##0';
+        b.value=x.prev[i];c.value=x.cur[i];cell(b,f);cell(c,f);
+        v.value=(x.prev[i]!=null&&x.cur[i]!=null)?{formula:'IF(B'+r+'=0,"n/d",(C'+r+'-B'+r+')/B'+r+')'}:'n/d';cell(v,'+0.0%;-0.0%;0.0%');
+      });
+      [22,16,16,16].forEach(function(w,i){s.getColumn(i+1).width=w});
+      var r=13;s.getCell(r,1).value='Melhores e Piores Posts do Mês';s.mergeCells(r,1,r,4);
+      for(var k=1;k<=4;k++){var cc=s.getCell(r,k);cc.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFD9E2F3'}};cc.font={name:F,bold:true,size:12,color:{argb:NAVY}}}
+      r++;['','Legenda','Métrica','Valor'].forEach(function(h,i){if(h){var c=s.getCell(r,i+1);c.value=h;hdr(c)}});r++;
+      [['best','Melhor post','FFE2EFDA'],['worst','Pior post','FFFCE4E4']].forEach(function(t){
+        var arr=(t[0]==='best'?x.d.bestPosts:x.d.worstPosts)||[];
+        if(!arr.length){arr=[{caption:'—',metricLabel:'Curtidas',metricValue:null}]}
+        arr.forEach(function(p){
+          s.getCell(r,1).value=t[1];s.getCell(r,2).value=p.caption||'—';s.getCell(r,3).value=p.metricLabel||'Curtidas';s.getCell(r,4).value=typeof p.metricValue==='number'?p.metricValue:'—';
+          for(var k=1;k<=4;k++){var cc=s.getCell(r,k);cc.font={name:F,size:11,bold:k===1};cc.border=BD;cc.fill={type:'pattern',pattern:'solid',fgColor:{argb:t[2]}};cc.alignment={wrapText:true,vertical:'top'}}
+          if(safeLink(p.link))s.getCell(r,2).value={text:p.caption||'ver post',hyperlink:safeLink(p.link)};
+          s.getRow(r).height=30;r++;
+        });
+      });
+      s.getColumn(2).width=44;
+    });
+    return wb.xlsx.writeBuffer();
+  }).then(function(buf){
+    var u=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),a=document.createElement('a');
+    a.href=u;a.download='mediari-metricas-'+curP.replace(/[^\w]+/g,'-').replace(/^-|-$/g,'')+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);
+    toast('Planilha baixada ('+list.length+' perfis, '+curP+').');
+  }).catch(function(e){toast('Não foi possível gerar a planilha'+(e&&e.message?': '+e.message:'.'))});
+}
+$('#mClose').addEventListener('click',openClose);
+$('#mXlsx').addEventListener('click',exportXlsx);
+$('#mCloseCard').addEventListener('change',function(e){var ri=e.target.dataset&&e.target.dataset.ri;if(ri!=null&&AI_RES[ri])AI_RES[ri].doc=e.target.value});
+$('#mCloseCard').addEventListener('click',function(e){
+  var id=e.target.id;
+  if(id==='fc_read')aiRead();else if(id==='fc_apply')aiApply();else if(id==='fc_forget'){try{localStorage.removeItem('mediari-ak')}catch(x){}toast('Chave removida deste aparelho.');e.target.remove()}
+  else if(id==='fc_save')saveClose(false);else if(id==='fc_xlsx')saveClose(true);else if(id==='fc_cancel'){this.hidden=true;this.innerHTML=''}
 });
 
 /* ---------- geral ---------- */
@@ -1700,7 +1915,7 @@ function startListeners(){
       S.ratesApplied=true;
     },fail2);
 }
-var BK=['clients','budgets','metrics','proposalImages'];
+var BK=['clients','budgets','metrics','proposalImages','events'];
 function exportBackup(){
   if(!S.db){toast('Entre primeiro.');return}
   var out={},jobs=BK.map(function(c){return S.db.collection(c).get().then(function(s){out[c]={};s.docs.forEach(function(d){out[c][d.id]=d.data()})})});
@@ -2488,6 +2703,251 @@ document.getElementById('nav').addEventListener('click',function(e){var b=e.targ
 window.addEventListener('resize',fit);
 var l=document.getElementById('pdList');if(l&&window.MutationObserver)new MutationObserver(function(){setTimeout(fit,0)}).observe(l,{childList:true});
 })();
+</script>
+<script>
+(function(){
+'use strict';
+var root=document.getElementById('agBody');if(!root)return;
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var DOW=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+var MES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+var CATS={reuniao:{n:'Reunião',c:'var(--blue)'},gravacao:{n:'Gravação',c:'var(--good)'},entrega:{n:'Entrega',c:'var(--copper)'},pessoal:{n:'Pessoal',c:'var(--muted)'},outro:{n:'Outro',c:'#7C5BB5'}};
+var PAGC='var(--warn)';
+var H0=6,H1=23,HH=48;
+var A={view:'month',cur:new Date(),events:[],clients:[],showPag:true,db:null};
+try{A.showPag=localStorage.getItem('mediari-ag-pag')!=='0';var sv=localStorage.getItem('mediari-ag-view');if(sv==='month'||sv==='week'||sv==='day')A.view=sv}catch(e){}
+if(window.innerWidth<700&&A.view==='week')A.view='day';
+
+var css=document.createElement('style');css.textContent=
+'.ag-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}'+
+'.ag-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}'+
+'.ag-title{font-family:var(--display);font-size:24px;font-weight:600;margin:0 6px;text-transform:capitalize}'+
+'.ag-views{display:flex;gap:0;border:1px solid var(--line);border-radius:7px;overflow:hidden}'+
+'.ag-views button{all:unset;cursor:pointer;padding:7px 14px;font-weight:600;font-size:13px;color:var(--muted);background:var(--surface)}'+
+'.ag-views button[aria-pressed="true"]{background:var(--blue);color:var(--blue-ink)}'+
+'.ag-views button:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}'+
+'.ag-opts{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:12.5px;color:var(--muted)}'+
+'.ag-opts label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}.ag-opts input{width:auto}'+
+'.ag-leg{display:inline-flex;gap:12px;flex-wrap:wrap}.ag-leg span{display:inline-flex;align-items:center;gap:5px}.ag-leg i{width:9px;height:9px;border-radius:50%;display:inline-block}'+
+'.ag-month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}'+
+'.ag-dow{background:var(--side);color:var(--side-ink);text-align:center;font-size:11px;letter-spacing:.08em;padding:8px 0;font-weight:600}'+
+'.ag-cell{background:var(--surface);min-height:104px;padding:5px;min-width:0;cursor:pointer}'+
+'.ag-cell.out{background:var(--bg);opacity:.65}'+
+'.ag-cell:hover{background:var(--blue-soft)}'+
+'.ag-dn{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:3px;font-variant-numeric:tabular-nums}'+
+'.ag-cell.today .ag-dn{display:inline-block;background:var(--blue);color:var(--blue-ink);border-radius:99px;padding:0 7px}'+
+'.ag-chip{display:block;width:100%;text-align:left;border:0;border-left:3px solid var(--c,var(--blue));background:var(--blue-soft);color:var(--ink);border-radius:4px;padding:2px 6px;margin-bottom:3px;font-size:11.5px;line-height:1.35;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'+
+'.ag-chip:hover{filter:brightness(.96)}.ag-chip:focus-visible{outline:2px solid var(--blue);outline-offset:1px}'+
+'.ag-chip.pag{cursor:default;background:var(--warn-soft)}'+
+'.ag-chip b{font-weight:600;font-variant-numeric:tabular-nums;margin-right:4px}'+
+'.ag-more{font-size:11px;color:var(--muted);padding-left:2px}'+
+'.ag-wk{border:1px solid var(--line);border-radius:8px;overflow:auto;background:var(--surface)}'+
+'.ag-wkin{display:grid;min-width:640px}'+
+'.ag-hd{display:grid;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--side);color:var(--side-ink);z-index:2}'+
+'.ag-hd div{padding:8px 4px;text-align:center;font-size:12px;font-weight:600}'+
+'.ag-hd .today{background:var(--blue);color:var(--blue-ink)}'+
+'.ag-allrow{display:grid;border-bottom:1px solid var(--line);background:var(--bg)}'+
+'.ag-allrow>div{padding:4px;min-height:28px;min-width:0;border-left:1px solid var(--line)}'+
+'.ag-allrow>div:first-child{border-left:0;font-size:10.5px;color:var(--muted);padding-top:8px}'+
+'.ag-tg{display:grid;position:relative}'+
+'.ag-hrs>div{height:'+HH+'px;font-size:10.5px;color:var(--muted);text-align:right;padding:0 6px;transform:translateY(-7px)}'+
+'.ag-col{position:relative;border-left:1px solid var(--line);cursor:pointer;background-image:linear-gradient(var(--line) 1px,transparent 1px);background-size:100% '+HH+'px}'+
+'.ag-ev{position:absolute;box-sizing:border-box;border:0;border-left:3px solid var(--c,var(--blue));background:var(--blue-soft);color:var(--ink);border-radius:5px;padding:2px 5px;font-size:11.5px;line-height:1.3;text-align:left;overflow:hidden;cursor:pointer}'+
+'.ag-ev:hover{filter:brightness(.96)}.ag-ev:focus-visible{outline:2px solid var(--blue)}'+
+'.ag-ev b{display:block;font-weight:600}'+
+'#agModal{position:fixed;inset:0;background:rgba(10,18,30,.6);display:none;align-items:flex-start;justify-content:center;padding:max(24px,env(safe-area-inset-top,0px)) 16px 24px;overflow-y:auto;z-index:60}'+
+'#agModal.show{display:flex}'+
+'.ag-box{background:var(--surface);border:1px solid var(--line);max-width:480px;width:100%;border-radius:10px;padding:22px 22px 20px;box-shadow:0 20px 60px rgba(10,18,30,.4)}'+
+'.ag-box h2{font-size:20px;margin-bottom:14px}'+
+'.ag-chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);font-weight:500}.ag-chk input{width:auto}'+
+'@media (max-width:640px){.ag-cell{min-height:70px;padding:3px}.ag-chip{font-size:10px;padding:1px 4px}.ag-title{font-size:20px}}';
+document.head.appendChild(css);
+
+var modal=document.createElement('div');modal.id='agModal';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');
+modal.innerHTML='<div class="ag-box"><h2 id="agMT">Novo evento</h2><div class="stack" style="gap:12px">'+
+'<label class="f">Título<input id="agTitle" autocomplete="off"></label>'+
+'<div class="row c2"><label class="f">Data<input id="agDate" type="date"></label><label class="f">Categoria<select id="agCat">'+Object.keys(CATS).map(function(k){return '<option value="'+k+'">'+CATS[k].n+'</option>'}).join('')+'</select></label></div>'+
+'<label class="ag-chk"><input type="checkbox" id="agAll"> Dia inteiro</label>'+
+'<div class="row c2" id="agTimes"><label class="f">Início<input id="agS" type="time"></label><label class="f">Fim<input id="agE" type="time"></label></div>'+
+'<label class="f">Cliente (opcional)<select id="agCli"></select></label>'+
+'<label class="f">Notas<textarea id="agNotes" style="min-height:70px"></textarea></label>'+
+'<div class="actions"><button class="btn" id="agSave" type="button">Salvar</button><button class="btn sec" id="agCancel" type="button">Cancelar</button><button class="btn danger" id="agDel" type="button" hidden>Excluir</button></div>'+
+'<p class="status" id="agMsg"></p></div></div>';
+document.body.appendChild(modal);
+var q=function(id){return document.getElementById(id)};
+
+function pad(n){return (n<10?'0':'')+n}
+function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function parse(s){var p=String(s).split('-');return new Date(+p[0],+p[1]-1,+p[2])}
+function addDays(d,n){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);return x}
+function sow(d){return addDays(d,-d.getDay())}
+function dim(y,m){return new Date(y,m+1,0).getDate()}
+function mins(t){if(!t)return null;var p=t.split(':');return (+p[0])*60+(+p[1])}
+function brl(n){return 'R$ '+new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(+n||0)}
+function cname(id){var c=A.clients.filter(function(x){return x.id===id})[0];return c?c.nome:''}
+
+function pagOn(ds){
+  if(!A.showPag)return [];
+  var d=parse(ds),out=[];
+  A.clients.forEach(function(c){
+    if(c.status!=='Ativo')return;var dp=Math.round(+c.diapag);if(!dp||dp<1)return;
+    if(Math.min(dp,dim(d.getFullYear(),d.getMonth()))===d.getDate())out.push({pag:true,title:'Pagamento: '+(c.nome||''),notes:+c.valor?brl(c.valor):''});
+  });
+  return out;
+}
+function evOn(ds){
+  var list=A.events.filter(function(e){return e.date===ds});
+  list.sort(function(a,b){var x=a.allDay?-1:(mins(a.start)==null?-1:mins(a.start)),y=b.allDay?-1:(mins(b.start)==null?-1:mins(b.start));return x-y});
+  return pagOn(ds).concat(list);
+}
+function chip(e){
+  if(e.pag)return '<div class="ag-chip pag" style="--c:'+PAGC+'" title="'+esc(e.title+(e.notes?' · '+e.notes:''))+'">'+esc(e.title)+'</div>';
+  var c=(CATS[e.cat]||CATS.outro).c,t=(!e.allDay&&e.start)?'<b>'+esc(e.start)+'</b>':'';
+  return '<button type="button" class="ag-chip" style="--c:'+c+'" data-ev="'+esc(e.id)+'">'+t+esc(e.title||'(sem título)')+'</button>';
+}
+function label(){
+  var c=A.cur;
+  if(A.view==='month')return MES[c.getMonth()]+' de '+c.getFullYear();
+  if(A.view==='day')return DOW[c.getDay()]+', '+c.getDate()+' de '+MES[c.getMonth()]+' de '+c.getFullYear();
+  var s=sow(c),e=addDays(s,6);
+  return s.getDate()+(s.getMonth()!==e.getMonth()?' de '+MES[s.getMonth()]:'')+' a '+e.getDate()+' de '+MES[e.getMonth()]+' de '+e.getFullYear();
+}
+function monthHtml(){
+  var c=A.cur,first=new Date(c.getFullYear(),c.getMonth(),1),start=sow(first),today=ymd(new Date()),h=DOW.map(function(d){return '<div class="ag-dow">'+d+'</div>'}).join('');
+  for(var i=0;i<42;i++){
+    var d=addDays(start,i),ds=ymd(d),L=evOn(ds),show=L.slice(0,3);
+    h+='<div class="ag-cell'+(d.getMonth()!==c.getMonth()?' out':'')+(ds===today?' today':'')+'" data-new="'+ds+'"><div class="ag-dn">'+d.getDate()+'</div>'+show.map(chip).join('')+(L.length>3?'<div class="ag-more">+'+(L.length-3)+' mais</div>':'')+'</div>';
+    if(i===34&&addDays(start,35).getMonth()!==c.getMonth())break;
+  }
+  return '<div class="ag-month">'+h+'</div>';
+}
+function lanes(list){
+  var ev=list.map(function(e){var s=mins(e.start),en=mins(e.end);if(en==null||en<=s)en=s+60;return {e:e,s:s,en:en,lane:0,n:1}}).sort(function(a,b){return a.s-b.s||a.en-b.en});
+  var cluster=[],cend=-1;
+  function close(){var m=0;cluster.forEach(function(x){if(x.lane+1>m)m=x.lane+1});cluster.forEach(function(x){x.n=m});cluster=[]}
+  ev.forEach(function(x){
+    if(cluster.length&&x.s>=cend)close();
+    var used={};cluster.forEach(function(y){if(y.en>x.s)used[y.lane]=1});
+    var l=0;while(used[l])l++;x.lane=l;cluster.push(x);cend=Math.max(cend<0?0:(cluster.length>1?cend:0),x.en,cend);
+  });
+  close();return ev;
+}
+function gridHtml(days){
+  var today=ymd(new Date()),n=days.length,cols='52px repeat('+n+',minmax(0,1fr))';
+  var hd='<div class="ag-hd" style="grid-template-columns:'+cols+'"><div></div>'+days.map(function(d){var ds=ymd(d);return '<div class="'+(ds===today?'today':'')+'">'+DOW[d.getDay()]+' '+d.getDate()+'</div>'}).join('')+'</div>';
+  var all='<div class="ag-allrow" style="grid-template-columns:'+cols+'"><div>dia todo</div>'+days.map(function(d){
+    var ds=ymd(d),L=evOn(ds).filter(function(e){return e.pag||e.allDay||mins(e.start)==null});
+    return '<div data-new="'+ds+'">'+L.map(chip).join('')+'</div>'}).join('')+'</div>';
+  var hrs='';for(var h=H0;h<H1;h++)hrs+='<div>'+pad(h)+':00</div>';
+  var colsH=days.map(function(d){
+    var ds=ymd(d),L=A.events.filter(function(e){return e.date===ds&&!e.allDay&&mins(e.start)!=null});
+    var evs=lanes(L).map(function(x){
+      var top=Math.max(0,(x.s-H0*60))/60*HH,hgt=Math.max(20,(Math.min(x.en,H1*60)-Math.max(x.s,H0*60))/60*HH),w=100/x.n,c=(CATS[x.e.cat]||CATS.outro).c;
+      return '<button type="button" class="ag-ev" data-ev="'+esc(x.e.id)+'" style="--c:'+c+';top:'+top+'px;height:'+hgt+'px;left:calc('+(w*x.lane)+'% + 1px);width:calc('+w+'% - 2px)"><b>'+esc(x.e.start)+(x.e.end?' - '+esc(x.e.end):'')+'</b>'+esc(x.e.title||'(sem título)')+'</button>';
+    }).join('');
+    return '<div class="ag-col" data-col="'+ds+'" style="height:'+(H1-H0)*HH+'px">'+evs+'</div>';
+  }).join('');
+  return '<div class="ag-wk"><div class="ag-wkin">'+hd+all+'<div class="ag-tg" style="grid-template-columns:'+cols+'"><div class="ag-hrs">'+hrs+'</div>'+colsH+'</div></div></div>';
+}
+function render(){
+  var leg=Object.keys(CATS).map(function(k){return '<span><i style="background:'+CATS[k].c+'"></i>'+CATS[k].n+'</span>'}).join('')+'<span><i style="background:'+PAGC+'"></i>Pagamento de cliente</span>';
+  var body=A.view==='month'?monthHtml():gridHtml(A.view==='day'?[A.cur]:Array.apply(null,{length:7}).map(function(_,i){return addDays(sow(A.cur),i)}));
+  root.innerHTML='<div class="ag-top"><div class="ag-nav"><button class="btn sec" data-nav="-1" aria-label="Anterior">‹</button><button class="btn sec" data-nav="0">Hoje</button><button class="btn sec" data-nav="1" aria-label="Próximo">›</button><h2 class="ag-title">'+esc(label())+'</h2></div>'+
+    '<div class="ag-views" role="group" aria-label="Visualização">'+[['month','Mês'],['week','Semana'],['day','Dia']].map(function(v){return '<button type="button" data-view="'+v[0]+'" aria-pressed="'+(A.view===v[0])+'">'+v[1]+'</button>'}).join('')+'</div></div>'+
+    body+
+    '<div class="ag-opts"><span class="ag-leg">'+leg+'</span><label><input type="checkbox" id="agPag"'+(A.showPag?' checked':'')+'> Mostrar pagamentos dos clientes</label><button class="btn sec small" id="agIcs" type="button">Baixar .ics (Google Agenda)</button></div>';
+}
+function shift(n){
+  var c=A.cur;
+  if(n===0)A.cur=new Date();
+  else if(A.view==='month')A.cur=new Date(c.getFullYear(),c.getMonth()+n,1);
+  else A.cur=addDays(c,(A.view==='week'?7:1)*n);
+  render();
+}
+/* modal */
+var editing=null;
+function fillClients(){q('agCli').innerHTML='<option value="">Nenhum</option>'+A.clients.map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.nome)+'</option>'}).join('')}
+function syncAll(){q('agTimes').hidden=q('agAll').checked}
+function open(ev,date,start){
+  editing=ev||null;fillClients();q('agMsg').textContent='';
+  q('agMT').textContent=ev?'Editar evento':'Novo evento';
+  q('agTitle').value=ev?ev.title||'':'';
+  q('agDate').value=ev?ev.date:(date||ymd(A.cur));
+  q('agCat').value=ev&&CATS[ev.cat]?ev.cat:'reuniao';
+  q('agAll').checked=ev?!!ev.allDay:false;
+  q('agS').value=ev?(ev.start||''):(start||'09:00');
+  q('agE').value=ev?(ev.end||''):(start?pad(Math.min(23,+start.slice(0,2)+1))+start.slice(2):'10:00');
+  q('agCli').value=ev&&ev.clientId||'';
+  q('agNotes').value=ev?ev.notes||'':'';
+  q('agDel').hidden=!ev;syncAll();
+  modal.classList.add('show');setTimeout(function(){q('agTitle').focus()},30);
+}
+function close(){modal.classList.remove('show');editing=null}
+function save(){
+  var t=q('agTitle').value.trim(),d=q('agDate').value,all=q('agAll').checked,s=q('agS').value,e=q('agE').value;
+  if(!t){q('agMsg').textContent='Dê um título ao evento.';q('agTitle').focus();return}
+  if(!d){q('agMsg').textContent='Escolha a data.';return}
+  if(!all&&!s){q('agMsg').textContent='Informe o horário de início ou marque dia inteiro.';return}
+  if(!all&&e&&mins(e)<=mins(s)){q('agMsg').textContent='O fim precisa ser depois do início.';return}
+  if(!A.db){q('agMsg').textContent='Entre na conta para salvar.';return}
+  var id=editing?editing.id:A.db.collection('events').doc().id;
+  var data={title:t,date:d,allDay:all,start:all?'':s,end:all?'':(e||''),cat:q('agCat').value,clientId:q('agCli').value||'',notes:q('agNotes').value.trim(),updatedAt:new Date().toISOString()};
+  q('agSave').disabled=true;
+  A.db.doc('events/'+id).set(data).then(function(){A.cur=parse(d);close();render()}).catch(function(){q('agMsg').textContent='Não foi possível salvar. Tente de novo.'}).then(function(){q('agSave').disabled=false});
+}
+function del(){
+  if(!editing||!A.db)return;
+  var b=q('agDel');
+  if(b.dataset.arm!=='1'){b.dataset.arm='1';b.textContent='Confirmar exclusão';setTimeout(function(){b.dataset.arm='';b.textContent='Excluir'},3000);return}
+  b.dataset.arm='';b.textContent='Excluir';
+  A.db.doc('events/'+editing.id).delete().then(close).catch(function(){q('agMsg').textContent='Não foi possível excluir.'});
+}
+/* .ics */
+function icsEsc(s){return String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n')}
+function icsDate(ds,t){return ds.replace(/-/g,'')+(t?'T'+t.replace(':','')+'00':'')}
+function ics(){
+  var L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//MediAri//Agenda//PT','CALSCALE:GREGORIAN'];
+  A.events.forEach(function(e){
+    L.push('BEGIN:VEVENT','UID:'+e.id+'@mediari','DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,''));
+    if(e.allDay||!e.start){L.push('DTSTART;VALUE=DATE:'+icsDate(e.date),'DTEND;VALUE=DATE:'+icsDate(ymd(addDays(parse(e.date),1))))}
+    else{var en=e.end&&mins(e.end)>mins(e.start)?e.end:(pad(Math.min(23,+e.start.slice(0,2)+1))+e.start.slice(2));L.push('DTSTART:'+icsDate(e.date,e.start),'DTEND:'+icsDate(e.date,en))}
+    L.push('SUMMARY:'+icsEsc(e.title));
+    var d=[(CATS[e.cat]||CATS.outro).n,cname(e.clientId)&&('Cliente: '+cname(e.clientId)),e.notes].filter(Boolean).join('\n');
+    if(d)L.push('DESCRIPTION:'+icsEsc(d));
+    L.push('END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  var blob=new Blob([L.join('\r\n')],{type:'text/calendar'}),u=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=u;a.download='mediari-agenda.ics';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);
+}
+/* eventos */
+root.addEventListener('click',function(e){
+  var t=e.target,n=t.closest('[data-nav]');if(n){shift(+n.dataset.nav);return}
+  var v=t.closest('[data-view]');if(v){A.view=v.dataset.view;try{localStorage.setItem('mediari-ag-view',A.view)}catch(x){}render();return}
+  var ev=t.closest('[data-ev]');if(ev){var f=A.events.filter(function(x){return x.id===ev.dataset.ev})[0];if(f)open(f);return}
+  if(t.closest('.ag-chip.pag'))return;
+  if(t.id==='agIcs'){ics();return}
+  var col=t.closest('[data-col]');
+  if(col){var r=col.getBoundingClientRect(),y=e.clientY-r.top,h=Math.min(H1-1,H0+Math.floor(y/HH));open(null,col.dataset.col,pad(h)+':00');return}
+  var nw=t.closest('[data-new]');if(nw){open(null,nw.dataset.new);return}
+});
+root.addEventListener('change',function(e){if(e.target.id==='agPag'){A.showPag=e.target.checked;try{localStorage.setItem('mediari-ag-pag',A.showPag?'1':'0')}catch(x){}render()}});
+q('agAll').addEventListener('change',syncAll);
+q('agSave').addEventListener('click',save);
+q('agCancel').addEventListener('click',close);
+q('agDel').addEventListener('click',del);
+modal.addEventListener('click',function(e){if(e.target===modal)close()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal.classList.contains('show'))close()});
+var nb=document.getElementById('agNew');if(nb)nb.addEventListener('click',function(){open(null,ymd(A.cur))});
+var nv=document.getElementById('nav');if(nv)nv.addEventListener('click',function(e){var b=e.target.closest('button');if(b&&b.dataset.v==='agenda')render()});
+render();
+if(window.__dbReady)window.__dbReady.then(function(db){
+  A.db=db;
+  db.collection('events').onSnapshot(function(s){A.events=s.docs.map(function(d){return Object.assign({id:d.id},d.data())});render()},function(){});
+  db.collection('clients').onSnapshot(function(s){A.clients=s.docs.map(function(d){return Object.assign({id:d.id},d.data())}).sort(function(a,b){return String(a.nome||'').localeCompare(String(b.nome||''))});render()},function(){});
+});
+})();
+
 </script>
 </body>
 </html>
