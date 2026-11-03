@@ -1764,15 +1764,27 @@ function gPrompt(nome){
   'Prints de posts: coração com número = curtidas, balão = comentários. Considere TODOS os prints juntos. Melhor post = mais curtidas; pior = menos curtidas. Posts que mostram só comentários, sem curtidas visíveis, não entram na comparação (avise na observação). Em empate, cite os dois na observação.\n'+
   'Período no formato "04/out a 02/nov/2026". Responda SOMENTE um objeto JSON: {"periodo":"","seguidores":0,"seguindo":0,"posts":0,"engajamento_pct":0,"media_curtidas":0,"media_comentarios":0,"melhor_post":{"legenda":"","curtidas":0},"pior_post":{"legenda":"","curtidas":0},"observacoes":""}';
 }
+var FILES={};
+function fileListHtml(id){
+  var l=FILES[id]||[];if(!l.length)return '';
+  return '<div style="font-size:12.5px;margin:-4px 0 10px"><b>'+l.length+' arquivo'+(l.length>1?'s':'')+' anexado'+(l.length>1?'s':'')+'</b> <button class="linkbtn" type="button" data-fclear="'+esc(id)+'">remover todos</button><ul style="margin:4px 0 0;padding-left:18px;color:var(--muted)">'+
+    l.map(function(f,i){return '<li>'+esc(f.name)+' <button class="linkbtn" type="button" data-frm="'+esc(id)+'" data-i="'+i+'" aria-label="Remover '+esc(f.name)+'">×</button></li>'}).join('')+'</ul></div>';
+}
+function paintFiles(id){var b=$('#mCloseCard [data-fc="'+id+'"] [data-fl]');if(b)b.innerHTML=fileListHtml(id)}
+function addFiles(id,fl){
+  var l=FILES[id]=FILES[id]||[];
+  [].slice.call(fl).forEach(function(f){if(!l.some(function(x){return x.name===f.name&&x.size===f.size&&x.lastModified===f.lastModified}))l.push(f)});
+  paintFiles(id);
+}
 function gReadAll(){
   var key=$('#fc_gkey').value.trim()||gKey(),st=$('#fc_ast');
   if(!key){toast('Cole a chave gratuita do Google AI Studio.');$('#fc_gkey').focus();return}
   try{localStorage.setItem('mediari-gk',key)}catch(e){}
-  var boxes=$$('#mCloseCard [data-fc]').filter(function(b){var f=b.querySelector('[data-ff]');return f&&f.files&&f.files.length});
+  var boxes=$$('#mCloseCard [data-fc]').filter(function(b){return (FILES[b.dataset.fc]||[]).length});
   if(!boxes.length){toast('Anexe os arquivos dentro do cartão de cada cliente.');return}
   $('#fc_gread').disabled=true;var done=[],fail2=[],obs=[];
   boxes.reduce(function(p,box,bi){return p.then(function(){
-    var d=mDoc(box.dataset.fc),files=[].slice.call(box.querySelector('[data-ff]').files);
+    var d=mDoc(box.dataset.fc),files=(FILES[box.dataset.fc]||[]).slice();
     st.textContent='Lendo '+d.name+' ('+files.length+' arquivo'+(files.length>1?'s':'')+'), cliente '+(bi+1)+' de '+boxes.length+'…';
     return Promise.all(files.map(function(f){
       var pdf=/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name);
@@ -1814,7 +1826,7 @@ var MLABS=['Seguidores','Seguindo','Posts','Engajamento (%)','Média de curtidas
 function mval(col,k){if(!col)return null;var m=(col.metrics||[]).find(function(x){return String(x.label).toLowerCase().indexOf(k)===0&&(k!=='posts'||String(x.label).toLowerCase()==='posts')});return m&&typeof m.value==='number'?m.value:null}
 function blank(v){return v==null||String(v).trim()===''}
 function openClose(){
-  closeMetricEditor();
+  closeMetricEditor();FILES={};
   var rows=mOrder().map(function(d){
     var crm=S.clients.find(function(x){return x.id===d.clientId});
     var on=!(crm&&crm.status!=='Ativo');
@@ -1823,7 +1835,7 @@ function openClose(){
     function post(kind,t){return '<div class="erow" data-fp="'+kind+'"><input class="cp" aria-label="'+t+' legenda" placeholder="'+t+': legenda do post"><input class="cv" type="number" inputmode="numeric" aria-label="'+t+' curtidas" placeholder="Curtidas"><input class="lk" aria-label="'+t+' link" placeholder="Link (opcional)"></div>'}
     return '<details class="card" data-fc="'+esc(d.id)+'" style="margin-bottom:10px"'+(on?' open':'')+'><summary style="cursor:pointer;font-weight:600">'+esc(d.name)+' <small style="color:var(--muted);font-weight:400">último: '+esc(d.month||'sem números')+'</small></summary>'+
       '<label class="ag-chk" style="display:flex;gap:8px;align-items:center;margin:10px 0"><input type="checkbox" data-fon'+(on?' checked':'')+' style="width:auto"> Incluir neste fechamento</label>'+
-      '<label class="f" style="margin-bottom:10px">Arquivos deste cliente (PDF do InsTrack e prints)<input type="file" data-ff multiple accept=".pdf,application/pdf,image/*"></label><div class="row c3" style="gap:10px">'+inputs+'</div>'+post('best','Melhor post')+post('worst','Pior post')+'</details>';
+      '<label class="f" style="margin-bottom:10px">Arquivos deste cliente (PDF do InsTrack e prints)<input type="file" data-ff multiple accept=".pdf,application/pdf,image/*"></label><div data-fl></div><p class="hint" style="margin:-4px 0 10px">Pode anexar mais de uma vez e de pastas diferentes: os arquivos vão se somando.</p><div class="row c3" style="gap:10px">'+inputs+'</div>'+post('best','Melhor post')+post('worst','Pior post')+'</details>';
   }).join('');
   var c=$('#mCloseCard');
   c.innerHTML='<h2>Fechamento do mês</h2><p class="hint" style="margin-top:0">O número cinza em cada campo é o do período anterior.</p>'+
@@ -1933,6 +1945,14 @@ function exportXlsx(){
 }
 $('#mClose').addEventListener('click',openClose);
 $('#mXlsx').addEventListener('click',exportXlsx);
+$('#mCloseCard').addEventListener('change',function(e){
+  var inp=e.target;if(!inp.matches||!inp.matches('[data-ff]'))return;
+  var box=inp.closest('[data-fc]');addFiles(box.dataset.fc,inp.files);inp.value='';
+});
+$('#mCloseCard').addEventListener('click',function(e){
+  var rm=e.target.closest('[data-frm]');if(rm){(FILES[rm.dataset.frm]||[]).splice(+rm.dataset.i,1);paintFiles(rm.dataset.frm);return}
+  var cl=e.target.closest('[data-fclear]');if(cl){FILES[cl.dataset.fclear]=[];paintFiles(cl.dataset.fclear);return}
+});
 $('#mCloseCard').addEventListener('click',function(e){
   var id=e.target.id;
   if(id==='fc_gread')gReadAll();else if(id==='fc_gforget'){try{localStorage.removeItem('mediari-gk')}catch(x){}gModels.c=null;toast('Chave removida deste aparelho.');e.target.remove()}else if(id==='fc_imp')clImport();else if(id==='fc_copyp'){var tx=clPrompt();if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(tx).then(function(){toast('Pedido copiado. Cole no chat do Claude.')},function(){toast('Não consegui copiar.')});else toast('Seu navegador não deixou copiar.')}
