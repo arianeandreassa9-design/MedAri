@@ -1681,39 +1681,48 @@ $('#v-metricas').addEventListener('change',function(e){
   var data=strip(d);data.clientId=e.target.value;
   put('metrics',d.id,data).then(function(){toast(data.clientId?'Vinculado ao cadastro.':'Vínculo removido.')}).catch(fail);
 });
-/* ---------- leitura de PDF e prints com IA ---------- */
-var AI_MODEL='claude-sonnet-5-5',AI_RES=[];
-var AI_TOOL={name:'registrar_metricas',description:'Registra os números lidos do relatório InsTrack e dos prints de posts.',input_schema:{type:'object',properties:{
-  perfil:{type:['string','null'],description:'@handle do perfil, sem o @'},
-  periodo:{type:['string','null'],description:'Período no formato 04/out a 02/nov/2026'},
-  seguidores:{type:['number','null']},seguindo:{type:['number','null']},posts:{type:['number','null']},
-  engajamento_pct:{type:['number','null'],description:'Engagement Rate em %, só o número'},
-  media_curtidas:{type:['number','null']},media_comentarios:{type:['number','null']},
-  medias_estimadas:{type:'boolean',description:'true se média de curtidas ou comentários foi lida de um gráfico'},
-  melhor_post:{type:['object','null'],properties:{legenda:{type:'string'},curtidas:{type:['number','null']}}},
-  pior_post:{type:['object','null'],properties:{legenda:{type:'string'},curtidas:{type:['number','null']}}},
-  observacoes:{type:'string',description:'Avisos curtos: empates, posts sem curtidas visíveis, valores incertos'}},
-  required:['perfil','periodo','seguidores','seguindo','posts','engajamento_pct','media_curtidas','media_comentarios','medias_estimadas','melhor_post','pior_post','observacoes']}};
-var AI_PROMPT='Você lê relatórios mensais de Instagram do InsTrack (PDF) e prints de posts, em português do Brasil. Use SOMENTE o que está visível no arquivo; se algum dado não aparecer, devolva null. Nunca invente números.\n'+
-'Relatório InsTrack: capa com @handle e período; página 2 com Followers, Following, Posts e Engagement Rate (use o valor atual, não a variação). Average Likes e Average Comments só aparecem em gráfico: leia o valor do último ponto do eixo Y, aproximado, e marque medias_estimadas=true.\n'+
-'Prints de posts: coração com número = curtidas, balão = comentários. Melhor post = mais curtidas; pior = menos curtidas. Em caso de empate, cite os dois na observação. Posts que mostram só comentários, sem curtidas visíveis, não entram na comparação; avise na observação. Se o arquivo for só print de posts, deixe os números do relatório como null.\n'+
-'Período no formato "04/out a 02/nov/2026". Chame a ferramenta registrar_metricas.';
-function aiKey(){try{return localStorage.getItem('mediari-ak')||''}catch(e){return ''}}
-function fileB64(f){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){ok(String(r.result).split(',')[1])};r.onerror=no;r.readAsDataURL(f)})}
-function imgB64(f){return new Promise(function(ok,no){
-  var u=URL.createObjectURL(f),im=new Image();
-  im.onload=function(){var k=Math.min(1,1568/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
-    c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',0.88).split(',')[1])};
-  im.onerror=function(){URL.revokeObjectURL(u);no(new Error('não consegui abrir a imagem '+f.name+' (HEIC não é aceito, use print ou JPG/PNG)'))};im.src=u})}
-function aiCall(f,key){
-  var isPdf=/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name);
-  return (isPdf?fileB64(f):imgB64(f)).then(function(b64){
-    var block=isPdf?{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}}:{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}};
-    return fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:AI_MODEL,max_tokens:2000,tools:[AI_TOOL],tool_choice:{type:'tool',name:'registrar_metricas'},messages:[{role:'user',content:[block,{type:'text',text:AI_PROMPT}]}]})});
-  }).then(function(r){return r.json().then(function(j){
-    if(!r.ok){var m=(j&&j.error&&j.error.message)||('erro '+r.status);if(r.status===401)m='chave inválida';if(r.status===429)m='limite de uso atingido, tente de novo em instantes';throw new Error(m)}
-    var t=(j.content||[]).find(function(c){return c.type==='tool_use'});if(!t)throw new Error('a IA não devolveu os números');return t.input})});
+/* ---------- leitura de PDF e prints (OCR no aparelho, sem custo) ---------- */
+var AI_RES=[],_ld={};
+function loadScript(src){return _ld[src]||(_ld[src]=new Promise(function(ok,no){var s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=function(){delete _ld[src];no(new Error('sem conexão com a biblioteca de leitura'))};document.head.appendChild(s)}))}
+var MESES_EN={jan:'jan',feb:'fev',mar:'mar',apr:'abr',may:'mai',jun:'jun',jul:'jul',aug:'ago',sep:'set',oct:'out',nov:'nov',dec:'dez'};
+function periodoPt(t){
+  var m=/([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})\s*[-–—to]+\s*([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/i.exec(t);
+  if(!m)return null;var a=MESES_EN[m[1].toLowerCase()],b=MESES_EN[m[4].toLowerCase()];if(!a||!b)return null;
+  function d(x){return ('0'+x).slice(-2)}
+  return d(m[2])+'/'+a+(m[3]!==m[6]?'/'+m[3]:'')+' a '+d(m[5])+'/'+b+'/'+m[6];
+}
+function intAfter(t,label){var m=new RegExp('\\b'+label+'\\b[^0-9]{0,40}?([0-9][0-9.,]*)','i').exec(t);if(!m)return null;var n=parseInt(m[1].replace(/[^0-9]/g,''),10);return isFinite(n)?n:null}
+function parseKpis(t){
+  var h=/@([A-Za-z0-9._]{3,})/.exec(t),e=/Engagement\s*Rate[^0-9]{0,40}?([0-9]+[.,][0-9]+|[0-9]+)/i.exec(t);
+  return {perfil:h?h[1]:null,periodo:periodoPt(t),seguidores:intAfter(t,'Followers'),seguindo:intAfter(t,'Following'),posts:intAfter(t,'Posts'),
+    engajamento_pct:e?parseFloat(e[1].replace(',','.')):null,media_curtidas:null,media_comentarios:null,medias_estimadas:false,melhor_post:null,pior_post:null,observacoes:''};
+}
+function canvasOf(f){return new Promise(function(ok,no){var u=URL.createObjectURL(f),im=new Image();im.onload=function(){var k=Math.min(2,2400/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c)};im.onerror=function(){URL.revokeObjectURL(u);no(new Error('não consegui abrir a imagem (HEIC não é aceito, use print ou JPG/PNG)'))};im.src=u})}
+function getWorker(){
+  if(getWorker.w)return getWorker.w;
+  getWorker.w=loadScript('https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js').then(function(){return Tesseract.createWorker('eng')});
+  return getWorker.w;
+}
+function ocrCanvas(c){return getWorker().then(function(w){return w.recognize(c)}).then(function(r){return r.data.text||''})}
+function readFileText(f,st){
+  if(!(/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name)))return canvasOf(f).then(ocrCanvas);
+  return loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js').then(function(){
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    return f.arrayBuffer()}).then(function(buf){return pdfjsLib.getDocument({data:buf}).promise}).then(function(pdf){
+    var n=Math.min(pdf.numPages,4),out='',p=Promise.resolve();
+    for(var i=1;i<=n;i++)(function(i){p=p.then(function(){
+      st.textContent='Lendo '+f.name+' (página '+i+' de '+n+')…';
+      return pdf.getPage(i).then(function(pg){
+        return pg.getTextContent().then(function(tc){
+          var tx=tc.items.map(function(x){return x.str}).join(' ');
+          if(tx.replace(/\s/g,'').length>40){out+='\n'+tx;return}
+          var vp=pg.getViewport({scale:2}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;
+          return pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise.then(function(){return ocrCanvas(c)}).then(function(t){out+='\n'+t});
+        });
+      });
+    })})(i);
+    return p.then(function(){return out});
+  });
 }
 function guessDoc(handle){
   var h=String(handle||'').toLowerCase().replace(/[^a-z0-9]/g,'');if(!h)return '';
@@ -1731,23 +1740,40 @@ function aiRender(){
     var x=r.data,bits=[];
     if(x.perfil)bits.push('@'+esc(x.perfil));if(x.periodo)bits.push(esc(x.periodo));
     [['Seguidores',x.seguidores],['Seguindo',x.seguindo],['Posts',x.posts],['Engajamento',x.engajamento_pct==null?null:x.engajamento_pct+'%'],['Média de curtidas',x.media_curtidas],['Média de comentários',x.media_comentarios]].forEach(function(p){if(p[1]!=null)bits.push(p[0]+': '+esc(p[1]))});
-    if(x.melhor_post&&x.melhor_post.legenda)bits.push('Melhor: “'+esc(x.melhor_post.legenda.slice(0,60))+'” ('+esc(x.melhor_post.curtidas==null?'?':x.melhor_post.curtidas)+')');
-    if(x.pior_post&&x.pior_post.legenda)bits.push('Pior: “'+esc(x.pior_post.legenda.slice(0,60))+'” ('+esc(x.pior_post.curtidas==null?'?':x.pior_post.curtidas)+')');
+    if(x.melhor_post&&x.melhor_post.legenda)bits.push('Melhor: “'+esc(String(x.melhor_post.legenda).slice(0,60))+'” ('+esc(x.melhor_post.curtidas==null?'?':x.melhor_post.curtidas)+')');
+    if(x.pior_post&&x.pior_post.legenda)bits.push('Pior: “'+esc(String(x.pior_post.legenda).slice(0,60))+'” ('+esc(x.pior_post.curtidas==null?'?':x.pior_post.curtidas)+')');
+    if(!bits.length)bits.push('Nada reconhecido neste arquivo.');
     return '<div class="card" style="padding:12px;margin-bottom:8px"><b>'+esc(r.name)+'</b><div style="font-size:13px;color:var(--muted);margin:6px 0">'+bits.join(' · ')+'</div>'+
-      (x.medias_estimadas?'<div style="font-size:12.5px;color:var(--warn)">Médias lidas de gráfico: valores aproximados.</div>':'')+(x.observacoes?'<div style="font-size:12.5px;color:var(--muted)">'+esc(x.observacoes)+'</div>':'')+
+      (x.observacoes?'<div style="font-size:12.5px;color:var(--warn)">'+esc(x.observacoes)+'</div>':'')+
+      (r.raw?'<details><summary style="cursor:pointer;font-size:12.5px;color:var(--muted)">Ver texto reconhecido</summary><pre style="white-space:pre-wrap;font-size:12px;max-height:160px;overflow:auto">'+esc(r.raw)+'</pre></details>':'')+
       '<label class="f" style="max-width:320px;margin-top:8px">Perfil no app<select data-ri="'+i+'">'+opts.replace('value="'+esc(r.doc)+'"','value="'+esc(r.doc)+'" selected')+'</select></label></div>';
   }).join('')+(AI_RES.some(function(r){return !r.err})?'<div class="actions"><button class="btn" id="fc_apply" type="button">Preencher o fechamento com esses números</button></div>':'');
 }
 function aiRead(){
-  var files=[].slice.call($('#fc_files').files),key=$('#fc_key').value.trim()||aiKey();
+  var files=[].slice.call($('#fc_files').files);
   if(!files.length){toast('Escolha os PDFs ou prints.');return}
-  if(!key){toast('Cole a chave da API da Anthropic.');$('#fc_key').focus();return}
-  try{localStorage.setItem('mediari-ak',key)}catch(e){}
   AI_RES=[];var st=$('#fc_ast');$('#fc_read').disabled=true;
   files.reduce(function(p,f,i){return p.then(function(){
-    st.textContent='Lendo '+(i+1)+' de '+files.length+': '+f.name+'…';
-    return aiCall(f,key).then(function(data){AI_RES.push({name:f.name,data:data,doc:guessDoc(data.perfil)})}).catch(function(e){AI_RES.push({name:f.name,err:(e&&e.message)||'falha na leitura'})});
-  })},Promise.resolve()).then(function(){st.textContent='Leitura concluída. Confira os números antes de preencher.';$('#fc_read').disabled=false;aiRender()});
+    st.textContent='Lendo '+(i+1)+' de '+files.length+': '+f.name+' (a primeira leitura baixa o leitor, pode demorar)…';
+    return readFileText(f,st).then(function(t){
+      var x=parseKpis(t);
+      if(x.seguidores==null&&x.seguindo==null&&x.posts==null&&x.engajamento_pct==null)x.observacoes='Não achei os números do relatório. Se for print de posts, lance melhor e pior post à mão.';
+      else x.observacoes='Médias de curtidas e comentários estão em gráfico: preencha à mão. Confira os números antes de salvar.';
+      AI_RES.push({name:f.name,data:x,raw:t.trim().slice(0,3000),doc:guessDoc(x.perfil)});
+    }).catch(function(e){AI_RES.push({name:f.name,err:(e&&e.message)||'falha na leitura'})});
+  })},Promise.resolve()).then(function(){
+    st.textContent='Leitura concluída. Confira antes de preencher.';$('#fc_read').disabled=false;aiRender();
+    if(getWorker.w){getWorker.w.then(function(w){w.terminate()}).catch(function(){});getWorker.w=null}
+  });
+}
+var CL_PROMPT='Leia o relatório InsTrack (PDF) e os prints de posts que estou anexando. Devolva SOMENTE um bloco de código JSON, sem texto fora dele, neste formato (use null no que não aparecer, médias lidas de gráfico são aproximadas):\n{"perfis":[{"perfil":"handle sem @","periodo":"04/out a 02/nov/2026","seguidores":0,"seguindo":0,"posts":0,"engajamento_pct":0,"media_curtidas":0,"media_comentarios":0,"melhor_post":{"legenda":"","curtidas":0},"pior_post":{"legenda":"","curtidas":0},"observacoes":""}]}';
+function aiImport(){
+  var t=$('#fc_json').value.trim();if(!t){toast('Cole o JSON que o Claude devolveu.');return}
+  t=t.replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
+  var j;try{j=JSON.parse(t)}catch(e){toast('Não consegui ler esse JSON. Copie só o bloco de código.');return}
+  var list=Array.isArray(j)?j:(j.perfis||[j]);
+  AI_RES=list.map(function(x,i){return {name:'Colado do Claude'+(list.length>1?' #'+(i+1):''),data:Object.assign({observacoes:''},x),doc:guessDoc(x.perfil)}});
+  $('#fc_json').value='';aiRender();
 }
 function aiApply(){
   var n=0;
@@ -1780,9 +1806,12 @@ function openClose(){
   }).join('');
   var c=$('#mCloseCard');
   c.innerHTML='<h2>Fechamento do mês</h2><p class="hint" style="margin-top:0">Preencha só o que veio do InsTrack. O número cinza de cada campo é o do período anterior. Média de curtidas e de comentários vêm de gráfico, então são estimados.</p>'+
-    '<div class="card" style="margin-bottom:14px;background:var(--bg)"><h3 style="margin:0 0 6px">Ler PDF e prints com IA</h3><p class="hint" style="margin-top:0">Anexe o relatório do InsTrack (PDF) e os prints dos posts. A IA lê, você confere e manda para os campos abaixo. Usa a sua chave da API da Anthropic (cobrança por uso), guardada só neste aparelho. Os arquivos vão direto para a Anthropic.</p>'+
-    '<div class="row c2"><label class="f">Arquivos<input type="file" id="fc_files" multiple accept=".pdf,application/pdf,image/*"></label><label class="f">Chave da API (sk-ant-…)<input type="password" id="fc_key" autocomplete="off" placeholder="'+(aiKey()?'chave salva neste aparelho':'cole aqui')+'"></label></div>'+
-    '<div class="actions" style="margin-top:10px"><button class="btn" id="fc_read" type="button">Ler com IA</button>'+(aiKey()?'<button class="btn sec small" id="fc_forget" type="button">Esquecer chave</button>':'')+'</div><p class="status" id="fc_ast"></p><div id="fc_res" style="margin-top:8px"></div></div>'+
+    '<div class="card" style="margin-bottom:14px;background:var(--bg)"><h3 style="margin:0 0 6px">Ler PDF e prints</h3><p class="hint" style="margin-top:0">Gratuito: a leitura roda no seu aparelho, sem chave e sem enviar os arquivos para ninguém. Pega seguidores, seguindo, posts e engajamento do relatório do InsTrack. Médias de curtidas e comentários (gráficos) e melhor e pior post você lança à mão, ou usa a opção abaixo.</p>'+
+    '<label class="f">Relatório (PDF) ou prints<input type="file" id="fc_files" multiple accept=".pdf,application/pdf,image/*"></label>'+
+    '<div class="actions" style="margin-top:10px"><button class="btn" id="fc_read" type="button">Ler arquivos</button></div><p class="status" id="fc_ast"></p><div id="fc_res" style="margin-top:8px"></div>'+
+    '<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:600">Prefere que o Claude leia tudo, inclusive gráficos e posts?</summary><p class="hint">Mande os arquivos no chat do Claude com o pedido abaixo (sem custo extra, está na sua assinatura) e cole aqui o JSON que ele devolver.</p>'+
+    '<div class="actions"><button class="btn sec small" id="fc_copyp" type="button">Copiar pedido para o Claude</button></div>'+
+    '<label class="f" style="margin-top:8px">JSON devolvido pelo Claude<textarea id="fc_json" style="min-height:70px" placeholder="Cole aqui"></textarea></label><div class="actions"><button class="btn sec small" id="fc_imp" type="button">Importar JSON</button></div></details></div>'+
     '<label class="f" style="max-width:420px">Período do fechamento<input id="fc_month" placeholder="Ex.: 04/out a 02/nov/2026 (InsTrack)"></label><div style="margin-top:14px">'+rows+'</div>'+
     '<div class="actions" style="margin-top:12px"><button class="btn" id="fc_save">Salvar fechamento</button><button class="btn sec" id="fc_xlsx">Salvar e baixar planilha</button><button class="btn sec" id="fc_cancel">Fechar</button></div>';
   c.hidden=false;$('#fc_month').focus();c.scrollIntoView({behavior:'smooth',block:'start'});
@@ -1883,7 +1912,7 @@ $('#mXlsx').addEventListener('click',exportXlsx);
 $('#mCloseCard').addEventListener('change',function(e){var ri=e.target.dataset&&e.target.dataset.ri;if(ri!=null&&AI_RES[ri])AI_RES[ri].doc=e.target.value});
 $('#mCloseCard').addEventListener('click',function(e){
   var id=e.target.id;
-  if(id==='fc_read')aiRead();else if(id==='fc_apply')aiApply();else if(id==='fc_forget'){try{localStorage.removeItem('mediari-ak')}catch(x){}toast('Chave removida deste aparelho.');e.target.remove()}
+  if(id==='fc_read')aiRead();else if(id==='fc_apply')aiApply();else if(id==='fc_imp')aiImport();else if(id==='fc_copyp'){var tx=CL_PROMPT;if(navigator.clipboard)navigator.clipboard.writeText(tx).then(function(){toast('Pedido copiado.')},function(){toast('Não consegui copiar.')});else toast('Copie manualmente: '+tx.slice(0,40)+'…')}
   else if(id==='fc_save')saveClose(false);else if(id==='fc_xlsx')saveClose(true);else if(id==='fc_cancel'){this.hidden=true;this.innerHTML=''}
 });
 
