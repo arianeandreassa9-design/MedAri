@@ -497,7 +497,7 @@ td.delta-c.up{color:var(--good)}td.delta-c.down{color:var(--bad)}td.delta-c.flat
 
     <!-- AGENDA -->
     <section id="v-agenda" hidden>
-      <div class="head"><div><p class="eyebrow">Compromissos</p><h1>Agenda</h1><p>Reuniões, gravações e entregas. Clique num dia para criar um evento.</p></div><div><button class="btn" id="agNew" type="button">Novo evento</button></div></div>
+      <div class="head"><div><p class="eyebrow">Compromissos</p><h1>Agenda</h1><p>Eventos fixos de todo mês. Clique no número do dia para marcar um.</p></div><div><button class="btn" id="agNew" type="button">Novo evento fixo</button></div></div>
       <div id="agBody"></div>
     </section>
 
@@ -2758,7 +2758,7 @@ var css=document.createElement('style');css.textContent=
 '.ag-box{background:var(--surface);border:1px solid var(--line);max-width:480px;width:100%;border-radius:10px;padding:22px 22px 20px;box-shadow:0 20px 60px rgba(10,18,30,.4)}'+
 '.ag-box h2{font-size:20px;margin-bottom:14px}'+
 '.ag-chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);font-weight:500}.ag-chk input{width:auto}'+
-'.fx-wrap{margin-top:26px}.fx-wrap h2{font-size:20px;margin-bottom:4px}.fx-wrap p{margin:0 0 12px;color:var(--muted);font-size:13px}'+
+'.fx-wrap{margin-top:0}.fx-wrap h2{font-size:20px;margin-bottom:4px}.fx-wrap p{margin:0 0 12px;color:var(--muted);font-size:13px}'+
 '.fx-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}'+
 '.fx-cell{background:var(--surface);min-height:84px;padding:5px;min-width:0;cursor:pointer}.fx-cell:hover{background:var(--blue-soft)}.fx-cell.off{background:var(--bg);cursor:default}.fx-cell.off:hover{background:var(--bg)}'+
 '.fx-n{font-size:13px;font-weight:700;color:var(--blue);margin-bottom:3px;font-variant-numeric:tabular-nums}'+
@@ -2868,16 +2868,9 @@ function fixHtml(){
     var L=A.fixos.filter(function(f){return +f.day===i}).sort(function(a,b){return String(a.title).localeCompare(String(b.title),'pt-BR')});
     cells+='<div class="fx-cell" data-fxnew="'+i+'"><div class="fx-n">'+i+'</div>'+L.map(function(f){return '<button type="button" class="ag-chip" style="--c:'+(CATS[f.cat]||CATS.outro).c+'" data-fx="'+esc(f.id)+'">'+esc(f.title||'(sem título)')+'</button>'}).join('')+'</div>';
   }
-  return '<div class="fx-wrap"><h2>Eventos fixos de todo mês</h2><p>Clique no número do dia para marcar algo que se repete todo mês. Eles aparecem sozinhos no calendário acima. Em meses curtos, os dias 29, 30 e 31 caem no último dia do mês.</p><div class="fx-grid">'+cells+'</div></div>';
+  return '<div class="fx-wrap"><p>Em meses curtos, os dias 29, 30 e 31 caem no último dia do mês.</p><div class="fx-grid">'+cells+'</div></div>';
 }
-function render(){
-  var leg=Object.keys(CATS).map(function(k){return '<span><i style="background:'+CATS[k].c+'"></i>'+CATS[k].n+'</span>'}).join('')+'<span><i style="background:'+PAGC+'"></i>Pagamento de cliente</span>';
-  var body=A.view==='month'?monthHtml():gridHtml(A.view==='day'?[A.cur]:Array.apply(null,{length:7}).map(function(_,i){return addDays(sow(A.cur),i)}));
-  root.innerHTML='<div class="ag-top"><div class="ag-nav"><button class="btn sec" data-nav="-1" aria-label="Anterior">‹</button><button class="btn sec" data-nav="0">Hoje</button><button class="btn sec" data-nav="1" aria-label="Próximo">›</button><h2 class="ag-title">'+esc(label())+'</h2></div>'+
-    '<div class="ag-views" role="group" aria-label="Visualização">'+[['month','Mês'],['week','Semana'],['day','Dia']].map(function(v){return '<button type="button" data-view="'+v[0]+'" aria-pressed="'+(A.view===v[0])+'">'+v[1]+'</button>'}).join('')+'</div></div>'+
-    body+
-    '<div class="ag-opts"><span class="ag-leg">'+leg+'</span><label><input type="checkbox" id="agPag"'+(A.showPag?' checked':'')+'> Mostrar pagamentos dos clientes</label><button class="btn sec small" id="agIcs" type="button">Baixar .ics (Google Agenda)</button></div>'+fixHtml();
-}
+function render(){root.innerHTML=fixHtml()}
 function shift(n){
   var c=A.cur;
   if(n===0)A.cur=new Date();
@@ -2983,7 +2976,7 @@ q('agCancel').addEventListener('click',close);
 q('agDel').addEventListener('click',del);
 modal.addEventListener('click',function(e){if(e.target===modal)close()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){if(modal.classList.contains('show'))close();if(fxm.classList.contains('show'))fxClose()}});
-var nb=document.getElementById('agNew');if(nb)nb.addEventListener('click',function(){open(null,ymd(A.cur))});
+var nb=document.getElementById('agNew');if(nb)nb.addEventListener('click',function(){fxOpen(null,1)});
 var nv=document.getElementById('nav');if(nv)nv.addEventListener('click',function(e){var b=e.target.closest('button');if(b&&b.dataset.v==='agenda')render()});
 render();
 if(window.__dbReady)window.__dbReady.then(function(db){
