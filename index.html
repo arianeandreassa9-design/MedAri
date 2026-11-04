@@ -1690,134 +1690,75 @@ function findDoc(x){
   var best=null,bl=0;S.metrics.forEach(function(m){normN(m.name).split(' ').forEach(function(t){if(t.length>=4&&!/^(dra|midia)$/.test(t)&&h.indexOf(t)>=0&&t.length>bl){best=m;bl=t.length}})});
   return best;
 }
-function clPrompt(){
-  var nomes=mOrder().map(function(d){return d.name}).join(', ');
-  return 'Leia os arquivos que estou anexando (relatório InsTrack em PDF e prints de posts do Instagram) e devolva SOMENTE um bloco de código JSON, sem nenhum texto fora dele.\n'+
-  'Use exatamente estes nomes em "cliente": '+nomes+'.\n'+
-  'Junte PDF e prints do mesmo perfil em um único item. Se eu mandar os arquivos em várias mensagens, responda em cada uma só com o que está nos arquivos daquela mensagem (null no resto). Use null no que não aparecer, sem inventar. Média de curtidas e de comentários só aparece em gráfico: leia o último ponto, aproximado. Melhor post = mais curtidas, pior = menos curtidas (ignore posts sem curtidas visíveis e avise na observação).\n'+
-  'Formato:\n{"perfis":[{"cliente":"Nome","periodo":"04/out a 02/nov/2026","seguidores":0,"seguindo":0,"posts":0,"engajamento_pct":0,"media_curtidas":0,"media_comentarios":0,"melhor_post":{"legenda":"","curtidas":0},"pior_post":{"legenda":"","curtidas":0},"observacoes":""}]}';
+function fillBox(d,box,x){
+  if(x.periodo&&!$('#fc_month').value.trim())$('#fc_month').value=String(x.periodo).replace(/\s*\(InsTrack\)\s*$/i,'')+' (InsTrack)';
+  [x.seguidores,x.seguindo,x.posts,x.engajamento_pct,x.media_curtidas,x.media_comentarios].forEach(function(v,i){if(v==null||v==='')return;var el=box.querySelector('[data-fk="'+i+'"]');if(el)el.value=v});
+  [['best',x.melhor_post],['worst',x.pior_post]].forEach(function(p){
+    var q=p[1];if(!q||!q.legenda)return;var row=box.querySelector('[data-fp="'+p[0]+'"]');
+    row.querySelector('.cp').value=q.legenda;row.querySelector('.cv').value=q.curtidas==null?'':q.curtidas;
+  });
+  box.open=true;box.querySelector('[data-fon]').checked=true;
 }
-function jsonObjs(t){
-  var out=[],i=0;
-  while(i<t.length){
-    var c=t[i];if(c!=='{'&&c!=='['){i++;continue}
-    var dp=0,str=false,esc2=false,j=i;
-    for(;j<t.length;j++){var ch=t[j];
-      if(str){if(esc2)esc2=false;else if(ch==='\\')esc2=true;else if(ch==='"')str=false;continue}
-      if(ch==='"')str=true;else if(ch==='{'||ch==='[')dp++;else if(ch==='}'||ch===']'){dp--;if(dp===0)break}}
-    if(dp===0&&j<t.length){try{out.push(JSON.parse(t.slice(i,j+1)));i=j+1;continue}catch(e){}}
-    i++;
+/* ---------- importar a planilha gerada pelo Claude ---------- */
+function loadExcelJS(){
+  if(window.ExcelJS)return Promise.resolve();
+  return new Promise(function(ok,no){var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';s.onload=ok;s.onerror=function(){no(new Error('sem conexão com a biblioteca de planilha'))};document.head.appendChild(s)});
+}
+function cv2(c){var v=c.value;if(v&&typeof v==='object'){if('result' in v)v=v.result;else if('text' in v)v=v.text;else if(v.richText)v=v.richText.map(function(t){return t.text}).join('');else if(v instanceof Date)v=''}return v==null?'':v}
+function cnum(v){if(typeof v==='number')return v;var m=/-?\d[\d.,]*/.exec(String(v));if(!m)return null;var t=m[0];if(/,\d{1,2}$/.test(t))t=t.replace(/\./g,'').replace(',','.');else t=t.replace(/,/g,'');var n=parseFloat(t);return isFinite(n)?n:null}
+function sheetPeriod(ws){
+  for(var r=1;r<=4;r++){var t=String(cv2(ws.getCell(r,1)));var m=/(?:Período(?: atual)?:)\s*(.+?)(?:\s+·|\s*$)/i.exec(t);if(m)return m[1].replace(/\s*\(InsTrack\)\s*$/i,'').trim()}
+  return null;
+}
+function parseClientSheet(ws){
+  var name=String(cv2(ws.getCell(1,1))).trim();if(!name)return null;
+  var hdr=0,col=3;
+  for(var r=1;r<=12;r++){if(/^m[ée]trica$/i.test(String(cv2(ws.getCell(r,1))).trim())){hdr=r;for(var c=2;c<=6;c++)if(/atual/i.test(String(cv2(ws.getCell(r,c)))))col=c;break}}
+  if(!hdr)return null;
+  var x={cliente:name,periodo:sheetPeriod(ws),observacoes:''},vals={};
+  for(var r2=hdr+1;r2<hdr+12;r2++){
+    var lb=String(cv2(ws.getCell(r2,1))).trim().toLowerCase();if(!lb)continue;
+    MKEYS.forEach(function(k,i){if(lb.indexOf(k)===0&&(k!=='posts'||lb==='posts'))vals[i]=cnum(cv2(ws.getCell(r2,col)))});
+  }
+  x.seguidores=vals[0]!=null?vals[0]:null;x.seguindo=vals[1]!=null?vals[1]:null;x.posts=vals[2]!=null?vals[2]:null;x.engajamento_pct=vals[3]!=null?vals[3]:null;x.media_curtidas=vals[4]!=null?vals[4]:null;x.media_comentarios=vals[5]!=null?vals[5]:null;
+  for(var r3=hdr+1;r3<=ws.rowCount;r3++){
+    var a=String(cv2(ws.getCell(r3,1))).trim().toLowerCase(),kind=/^melhor/.test(a)?'melhor_post':/^pior/.test(a)?'pior_post':null;if(!kind)continue;
+    var cap=String(cv2(ws.getCell(r3,2))).trim();if(!cap||cap==='—')continue;
+    x[kind]={legenda:cap,curtidas:cnum(cv2(ws.getCell(r3,4)))};
+  }
+  return x;
+}
+function parseSummary(ws){
+  var out=[],per=sheetPeriod(ws),hr=0;
+  for(var r=1;r<=8;r++)if(/^perfil$/i.test(String(cv2(ws.getCell(r,1))).trim())){hr=r;break}
+  if(!hr)return out;
+  for(var r2=hr+1;r2<=ws.rowCount;r2++){
+    var nm=String(cv2(ws.getCell(r2,1))).trim();if(!nm)continue;
+    out.push({cliente:nm,periodo:per,seguidores:cnum(cv2(ws.getCell(r2,2))),seguindo:cnum(cv2(ws.getCell(r2,3))),posts:cnum(cv2(ws.getCell(r2,4))),engajamento_pct:cnum(cv2(ws.getCell(r2,5))),media_curtidas:cnum(cv2(ws.getCell(r2,6))),media_comentarios:cnum(cv2(ws.getCell(r2,7))),observacoes:''});
   }
   return out;
 }
-function fillBox(d,box,x){
-    if(x.periodo&&!$('#fc_month').value.trim())$('#fc_month').value=String(x.periodo).replace(/\s*\(InsTrack\)\s*$/i,'')+' (InsTrack)';
-    [x.seguidores,x.seguindo,x.posts,x.engajamento_pct,x.media_curtidas,x.media_comentarios].forEach(function(v,i){if(v==null||v==='')return;var el=box.querySelector('[data-fk="'+i+'"]');if(el)el.value=v});
-    [['best',x.melhor_post,1],['worst',x.pior_post,-1]].forEach(function(p){
-      var q=p[1];if(!q||!q.legenda)return;
-      var row=box.querySelector('[data-fp="'+p[0]+'"]'),cv=row.querySelector('.cv'),old=cv.value===''?null:parseFloat(cv.value),nv=q.curtidas==null?null:+q.curtidas;
-      var keepOld=row.querySelector('.cp').value&&old!=null&&nv!=null&&(p[2]>0?old>=nv:old<=nv);
-      if(keepOld)return;
-      row.querySelector('.cp').value=q.legenda;cv.value=nv==null?'':nv;
+function importXlsx(files){
+  var st=$('#fc_ast');if(!files.length)return;
+  st.textContent='Lendo a planilha…';
+  loadExcelJS().then(function(){
+    return files.reduce(function(p,f){return p.then(function(acc){
+      return f.arrayBuffer().then(function(buf){var wb=new ExcelJS.Workbook();return wb.xlsx.load(buf)}).then(function(wb){return acc.concat([wb])});
+    })},Promise.resolve([]));
+  }).then(function(wbs){
+    var items={},order=[];
+    wbs.forEach(function(wb){
+      var sum=wb.getWorksheet('Resumo'),fromSum=sum?parseSummary(sum):[];
+      wb.worksheets.forEach(function(ws){if(ws===sum)return;var x=parseClientSheet(ws);if(x){var k=normN(x.cliente);if(!items[k])order.push(k);items[k]=x}});
+      fromSum.forEach(function(x){var k=normN(x.cliente);if(!items[k]){items[k]=x;order.push(k)}else{['seguidores','seguindo','posts','engajamento_pct','media_curtidas','media_comentarios','periodo'].forEach(function(f){if(items[k][f]==null)items[k][f]=x[f]})}});
     });
-    box.open=true;box.querySelector('[data-fon]').checked=true;
-}
-/* ---------- leitura com Gemini (chave gratuita do Google AI Studio) ---------- */
-function gKey(){try{return localStorage.getItem('mediari-gk')||''}catch(e){return ''}}
-function fileB64(f){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){ok(String(r.result).split(',')[1])};r.onerror=function(){no(new Error('não consegui abrir '+f.name))};r.readAsDataURL(f)})}
-function imgB64(f){return new Promise(function(ok,no){
-  var u=URL.createObjectURL(f),im=new Image();
-  im.onload=function(){var k=Math.min(1,1800/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
-    c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',0.88).split(',')[1])};
-  im.onerror=function(){URL.revokeObjectURL(u);no(new Error('não consegui abrir '+f.name+' (fotos HEIC do iPhone não funcionam, use print ou JPG)'))};im.src=u})}
-var G_BASE='https://generativelanguage.googleapis.com/v1beta/';
-function gModels(key){
-  if(gModels.c)return Promise.resolve(gModels.c);
-  return fetch(G_BASE+'models?pageSize=200&key='+encodeURIComponent(key)).then(function(r){return r.json().then(function(j){
-    if(!r.ok)throw new Error(r.status===400||r.status===403?'chave inválida ou sem permissão':((j.error&&j.error.message)||'erro '+r.status));
-    var l=(j.models||[]).filter(function(m){return (m.supportedGenerationMethods||[]).indexOf('generateContent')>=0&&/flash/.test(m.name)&&!/lite|tts|image|audio|live|thinking|exp|preview|8b/.test(m.name)});
-    l.sort(function(a,b){function v(n){var m=/(\d+(?:\.\d+)?)/.exec(n);return m?parseFloat(m[1]):0}return v(b.name)-v(a.name)});
-    gModels.c=l.map(function(m){return m.name}).slice(0,3);if(!gModels.c.length)gModels.c=['models/gemini-flash-latest'];return gModels.c})});
-}
-function gCall(key,parts){
-  return gModels(key).then(function(models){
-    var i=0;
-    function go(){
-      return fetch(G_BASE+models[i]+':generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'content-type':'application/json'},
-        body:JSON.stringify({contents:[{role:'user',parts:parts}],generationConfig:{temperature:0,responseMimeType:'application/json'}})})
-      .then(function(r){return r.json().then(function(j){
-        if(!r.ok){
-          if((r.status===404||r.status===429)&&i<models.length-1){i++;return go()}
-          throw new Error(r.status===429?'limite grátis atingido, espere 1 minuto e clique de novo':((j.error&&j.error.message)||'erro '+r.status));
-        }
-        var t=(((j.candidates||[])[0]||{}).content||{}).parts;t=t&&t.map(function(p){return p.text||''}).join('');
-        if(!t)throw new Error('a IA não devolveu resposta (arquivo bloqueado ou ilegível)');
-        var o=jsonObjs(t)[0];if(!o)throw new Error('resposta da IA fora do formato');return Array.isArray(o)?o[0]:o;
-      })});
-    }
-    return go();
-  });
-}
-function gPrompt(nome){
-  return 'Você lê relatórios mensais de Instagram do InsTrack (PDF) e prints de posts, em português do Brasil. Todos os arquivos a seguir são do cliente "'+nome+'", mesmo que o perfil não apareça nos prints. Use SOMENTE o que está visível; se algo não aparecer, use null. Nunca invente números.\n'+
-  'Relatório InsTrack: capa com @handle e período; página 2 tem Followers, Following, Posts e Engagement Rate (use o valor atual, não a variação). Average Likes e Average Comments só aparecem em gráfico: leia o último ponto do eixo Y, aproximado.\n'+
-  'Prints de posts: coração com número = curtidas, balão = comentários. Considere TODOS os prints juntos. Melhor post = mais curtidas; pior = menos curtidas. Posts que mostram só comentários, sem curtidas visíveis, não entram na comparação (avise na observação). Em empate, cite os dois na observação.\n'+
-  'Período no formato "04/out a 02/nov/2026". Responda SOMENTE um objeto JSON: {"periodo":"","seguidores":0,"seguindo":0,"posts":0,"engajamento_pct":0,"media_curtidas":0,"media_comentarios":0,"melhor_post":{"legenda":"","curtidas":0},"pior_post":{"legenda":"","curtidas":0},"observacoes":""}';
-}
-var FILES={};
-function fileListHtml(id){
-  var l=FILES[id]||[];if(!l.length)return '';
-  return '<div style="font-size:12.5px;margin:-4px 0 10px"><b>'+l.length+' arquivo'+(l.length>1?'s':'')+' anexado'+(l.length>1?'s':'')+'</b> <button class="linkbtn" type="button" data-fclear="'+esc(id)+'">remover todos</button><ul style="margin:4px 0 0;padding-left:18px;color:var(--muted)">'+
-    l.map(function(f,i){return '<li>'+esc(f.name)+' <button class="linkbtn" type="button" data-frm="'+esc(id)+'" data-i="'+i+'" aria-label="Remover '+esc(f.name)+'">×</button></li>'}).join('')+'</ul></div>';
-}
-function paintFiles(id){var b=$('#mCloseCard [data-fc="'+id+'"] [data-fl]');if(b)b.innerHTML=fileListHtml(id)}
-function addFiles(id,fl){
-  var l=FILES[id]=FILES[id]||[];
-  [].slice.call(fl).forEach(function(f){if(!l.some(function(x){return x.name===f.name&&x.size===f.size&&x.lastModified===f.lastModified}))l.push(f)});
-  paintFiles(id);
-}
-function gReadAll(){
-  var key=$('#fc_gkey').value.trim()||gKey(),st=$('#fc_ast');
-  if(!key){toast('Cole a chave gratuita do Google AI Studio.');$('#fc_gkey').focus();return}
-  try{localStorage.setItem('mediari-gk',key)}catch(e){}
-  var boxes=$$('#mCloseCard [data-fc]').filter(function(b){return (FILES[b.dataset.fc]||[]).length});
-  if(!boxes.length){toast('Anexe os arquivos dentro do cartão de cada cliente.');return}
-  $('#fc_gread').disabled=true;var done=[],fail2=[],obs=[];
-  boxes.reduce(function(p,box,bi){return p.then(function(){
-    var d=mDoc(box.dataset.fc),files=(FILES[box.dataset.fc]||[]).slice();
-    st.textContent='Lendo '+d.name+' ('+files.length+' arquivo'+(files.length>1?'s':'')+'), cliente '+(bi+1)+' de '+boxes.length+'…';
-    return Promise.all(files.map(function(f){
-      var pdf=/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name);
-      return (pdf?fileB64(f):imgB64(f)).then(function(b){return {inline_data:{mime_type:pdf?'application/pdf':'image/jpeg',data:b}}});
-    })).then(function(parts){
-      var size=parts.reduce(function(a,p){return a+p.inline_data.data.length},0);
-      if(size>18e6)throw new Error('arquivos demais ou pesados para uma leitura só, anexe menos');
-      return gCall(key,[{text:gPrompt(d.name)}].concat(parts));
-    }).then(function(x){fillBox(d,box,x);done.push(d.name);if(x.observacoes)obs.push(d.name+': '+x.observacoes)})
-    .catch(function(e){fail2.push(d.name+' ('+((e&&e.message)||'falhou')+')')})
-    .then(function(){return new Promise(function(r){setTimeout(r,bi<boxes.length-1?4000:0)})});
-  })},Promise.resolve()).then(function(){
-    $('#fc_gread').disabled=false;
-    st.innerHTML=(done.length?'<b>Li '+done.length+' cliente(s):</b> '+esc(done.join(', '))+'. ':'')+(fail2.length?'<span style="color:var(--bad)">Não deu para ler: '+esc(fail2.join('; '))+'.</span> ':'')+(obs.length?'<br>Avisos: '+esc(obs.join(' | ')):'')+(done.length?'<br>Confira os números abaixo e clique em Salvar fechamento.':'');
-    if(done.length)st.scrollIntoView({behavior:'smooth',block:'center'});
-  });
-}
-
-function clImport(){
-  var t=$('#fc_json').value.trim();if(!t){toast('Cole aqui a resposta do Claude.');$('#fc_json').focus();return}
-  var list=[];jsonObjs(t).forEach(function(j){(Array.isArray(j)?j:(j.perfis||[j])).forEach(function(x){if(x&&typeof x==='object')list.push(x)})});
-  if(!list.length){toast('Não consegui ler. Copie a resposta inteira do Claude, incluindo as chaves { }.');return}
-  var ok={},miss=[],obs=[];
-  list.forEach(function(x){
-    var d=findDoc(x);if(!d){if(miss.indexOf(x.cliente||x.perfil||'?')<0)miss.push(x.cliente||x.perfil||'?');return}
-    var box=$('#mCloseCard [data-fc="'+d.id+'"]');if(!box)return;
-    fillBox(d,box,x);ok[d.name]=1;
-    if(x.observacoes)obs.push(d.name+': '+x.observacoes);
-  });
-  var names=Object.keys(ok);
-  $('#fc_json').value='';
-  $('#fc_ast').innerHTML='<b>Preenchi '+names.length+' perfil(is):</b> '+esc(names.join(', '))+'.'+(miss.length?' <span style="color:var(--bad)">Não encontrei no app: '+esc(miss.join(', '))+'.</span>':'')+(obs.length?'<br>Avisos do Claude: '+esc(obs.join(' | ')):'')+'<br>Tem mais respostas? Cole e clique em Preencher de novo, o app junta tudo. Quando acabar, confira abaixo e clique em Salvar fechamento.';
-  if(names.length)$('#fc_ast').scrollIntoView({behavior:'smooth',block:'center'});
+    var ok=[],miss=[];
+    order.forEach(function(k){var x=items[k],d=findDoc(x);if(!d){miss.push(x.cliente);return}
+      var box=$('#mCloseCard [data-fc="'+d.id+'"]');if(!box)return;fillBox(d,box,x);ok.push(d.name)});
+    if(!order.length){st.innerHTML='<span style="color:var(--bad)">Não achei dados nessa planilha. Use a planilha gerada pelo Claude (abas Resumo e uma por cliente).</span>';return}
+    st.innerHTML='<b>Preenchi '+ok.length+' cliente(s):</b> '+esc(ok.join(', '))+'.'+(miss.length?' <span style="color:var(--bad)">Não encontrei no app: '+esc(miss.join(', '))+'.</span>':'')+'<br>Confira os números abaixo e clique em <b>Salvar fechamento</b> para aplicar no painel.';
+    if(ok.length)st.scrollIntoView({behavior:'smooth',block:'center'});
+  }).catch(function(e){st.innerHTML='<span style="color:var(--bad)">Não consegui abrir a planilha'+(e&&e.message?': '+esc(e.message):'')+'.</span>'});
 }
 
 /* ---------- fechamento do mês + planilha ---------- */
@@ -1826,7 +1767,7 @@ var MLABS=['Seguidores','Seguindo','Posts','Engajamento (%)','Média de curtidas
 function mval(col,k){if(!col)return null;var m=(col.metrics||[]).find(function(x){return String(x.label).toLowerCase().indexOf(k)===0&&(k!=='posts'||String(x.label).toLowerCase()==='posts')});return m&&typeof m.value==='number'?m.value:null}
 function blank(v){return v==null||String(v).trim()===''}
 function openClose(){
-  closeMetricEditor();FILES={};
+  closeMetricEditor();
   var rows=mOrder().map(function(d){
     var crm=S.clients.find(function(x){return x.id===d.clientId});
     var on=!(crm&&crm.status!=='Ativo');
@@ -1835,19 +1776,13 @@ function openClose(){
     function post(kind,t){return '<div class="erow" data-fp="'+kind+'"><input class="cp" aria-label="'+t+' legenda" placeholder="'+t+': legenda do post"><input class="cv" type="number" inputmode="numeric" aria-label="'+t+' curtidas" placeholder="Curtidas"><input class="lk" aria-label="'+t+' link" placeholder="Link (opcional)"></div>'}
     return '<details class="card" data-fc="'+esc(d.id)+'" style="margin-bottom:10px"'+(on?' open':'')+'><summary style="cursor:pointer;font-weight:600">'+esc(d.name)+' <small style="color:var(--muted);font-weight:400">último: '+esc(d.month||'sem números')+'</small></summary>'+
       '<label class="ag-chk" style="display:flex;gap:8px;align-items:center;margin:10px 0"><input type="checkbox" data-fon'+(on?' checked':'')+' style="width:auto"> Incluir neste fechamento</label>'+
-      '<label class="f" style="margin-bottom:10px">Arquivos deste cliente (PDF do InsTrack e prints)<input type="file" data-ff multiple accept=".pdf,application/pdf,image/*"></label><div data-fl></div><p class="hint" style="margin:-4px 0 10px">Pode anexar mais de uma vez e de pastas diferentes: os arquivos vão se somando.</p><div class="row c3" style="gap:10px">'+inputs+'</div>'+post('best','Melhor post')+post('worst','Pior post')+'</details>';
+      '<div class="row c3" style="gap:10px">'+inputs+'</div>'+post('best','Melhor post')+post('worst','Pior post')+'</details>';
   }).join('');
   var c=$('#mCloseCard');
   c.innerHTML='<h2>Fechamento do mês</h2><p class="hint" style="margin-top:0">O número cinza em cada campo é o do período anterior.</p>'+
-    '<div class="card" style="margin-bottom:14px;background:var(--bg)"><h3 style="margin:0 0 8px">Ler PDF e prints automaticamente (grátis)</h3>'+
-    '<ol style="margin:0 0 10px;padding-left:20px;line-height:1.7"><li>Crie sua chave gratuita em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> (entra com o Google, não pede cartão) e cole abaixo, uma vez só.</li><li>Em cada cliente, mais abaixo, anexe o PDF do InsTrack e os prints dele, quantos forem.</li><li>Clique em <b>Ler todos os arquivos</b>.</li></ol>'+
-    '<label class="f" style="max-width:420px">Chave do Google AI Studio<input type="password" id="fc_gkey" autocomplete="off" placeholder="'+(gKey()?'chave salva neste aparelho':'cole aqui')+'"></label>'+
-    '<div class="actions" style="margin-top:10px"><button class="btn" id="fc_gread" type="button">Ler todos os arquivos</button>'+(gKey()?'<button class="btn sec small" id="fc_gforget" type="button">Esquecer chave</button>':'')+'</div><p class="status" id="fc_ast"></p>'+
-    '<p class="hint">No plano gratuito o Google pode usar o conteúdo enviado para melhorar os produtos dele. Aqui são só métricas e prints de posts.</p>'+
-    '<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:600">Prefere que o Claude do chat leia?</summary><p class="hint">Copie o pedido, mande os arquivos no chat do Claude, cole a resposta aqui e clique em Preencher.</p>'+
-    '<div class="actions"><button class="btn sec small" id="fc_copyp" type="button">Copiar pedido</button></div>'+
-    '<label class="f" style="margin-top:8px">Resposta do Claude<textarea id="fc_json" style="min-height:70px" placeholder="Cole aqui"></textarea></label><div class="actions"><button class="btn sec small" id="fc_imp" type="button">Preencher</button></div></details></div>'+
-    '<p class="hint" style="margin:0 0 8px">Ou preencha à mão:</p>'+
+    '<div class="card" style="margin-bottom:14px;background:var(--bg)"><h3 style="margin:0 0 6px">Importar a planilha do Claude</h3><p class="hint" style="margin-top:0">Escolha o arquivo .xlsx que o outro chat gerou. O app preenche os clientes abaixo, você confere e clica em Salvar fechamento.</p>'+
+    '<label class="f" style="max-width:420px">Planilha (.xlsx)<input type="file" id="fc_xin" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label><p class="status" id="fc_ast"></p></div>'+
+    '<p class="hint" style="margin:0 0 8px">Números do fechamento:</p>'+
     '<label class="f" style="max-width:420px">Período do fechamento<input id="fc_month" placeholder="Ex.: 04/out a 02/nov/2026 (InsTrack)"></label><div style="margin-top:14px">'+rows+'</div>'+
     '<div class="actions" style="margin-top:12px"><button class="btn" id="fc_save">Salvar fechamento</button><button class="btn sec" id="fc_xlsx">Salvar e baixar planilha</button><button class="btn sec" id="fc_cancel">Fechar</button></div>';
   c.hidden=false;$('#fc_month').focus();c.scrollIntoView({behavior:'smooth',block:'start'});
@@ -1876,10 +1811,6 @@ function saveClose(thenXlsx){
   });
   if(!n){toast('Preencha ao menos um número.');return}
   Promise.all(jobs).then(function(){$('#mCloseCard').hidden=true;$('#mCloseCard').innerHTML='';M.mi={};renderMetricsView();toast('Fechamento salvo ('+n+' perfis).');if(thenXlsx)setTimeout(exportXlsx,300)}).catch(fail);
-}
-function loadExcelJS(){
-  if(window.ExcelJS)return Promise.resolve();
-  return new Promise(function(ok,no){var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';s.onload=ok;s.onerror=function(){no(new Error('sem conexão com a biblioteca de planilha'))};document.head.appendChild(s)});
 }
 function exportXlsx(){
   var withNum=S.metrics.filter(function(d){return d.month&&(d.metrics||[]).some(function(m){return m.value!=null})});
@@ -1946,16 +1877,11 @@ function exportXlsx(){
 $('#mClose').addEventListener('click',openClose);
 $('#mXlsx').addEventListener('click',exportXlsx);
 $('#mCloseCard').addEventListener('change',function(e){
-  var inp=e.target;if(!inp.matches||!inp.matches('[data-ff]'))return;
-  var box=inp.closest('[data-fc]');addFiles(box.dataset.fc,inp.files);inp.value='';
-});
-$('#mCloseCard').addEventListener('click',function(e){
-  var rm=e.target.closest('[data-frm]');if(rm){(FILES[rm.dataset.frm]||[]).splice(+rm.dataset.i,1);paintFiles(rm.dataset.frm);return}
-  var cl=e.target.closest('[data-fclear]');if(cl){FILES[cl.dataset.fclear]=[];paintFiles(cl.dataset.fclear);return}
+  if(e.target.id==='fc_xin'){var fl=[].slice.call(e.target.files);e.target.value='';importXlsx(fl)}
 });
 $('#mCloseCard').addEventListener('click',function(e){
   var id=e.target.id;
-  if(id==='fc_gread')gReadAll();else if(id==='fc_gforget'){try{localStorage.removeItem('mediari-gk')}catch(x){}gModels.c=null;toast('Chave removida deste aparelho.');e.target.remove()}else if(id==='fc_imp')clImport();else if(id==='fc_copyp'){var tx=clPrompt();if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(tx).then(function(){toast('Pedido copiado. Cole no chat do Claude.')},function(){toast('Não consegui copiar.')});else toast('Seu navegador não deixou copiar.')}
+  if(false){}
   else if(id==='fc_save')saveClose(false);else if(id==='fc_xlsx')saveClose(true);else if(id==='fc_cancel'){this.hidden=true;this.innerHTML=''}
 });
 
