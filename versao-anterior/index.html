@@ -451,6 +451,7 @@ td.delta-c.up{color:var(--good)}td.delta-c.down{color:var(--bad)}td.delta-c.flat
 .llogo{display:block;width:72px;height:auto;margin:0 auto 10px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
+<style>html.embed .side,html.embed .topbar{display:none!important}html.embed .app{grid-template-columns:minmax(0,1fr)!important}html.embed .main{padding-top:16px!important}</style>
 </head>
 <body>
 
@@ -822,6 +823,7 @@ function go(v){
   window.scrollTo(0,0);
 }
 $('#nav').addEventListener('click',function(e){var b=e.target.closest('button');if(b)go(b.dataset.v)});
+;(function(){var q=new URLSearchParams(location.search);if(q.get('embed')==='1')document.documentElement.classList.add('embed');var v=q.get('v');if(v&&document.getElementById('v-'+v))go(v)})();
 document.addEventListener('click',function(e){
   var g=e.target.closest('[data-go]');if(g){if(g.dataset.go==='orcamento')startNewBudget();go(g.dataset.go)}
   var n=e.target.closest('[data-newclient]');if(n){go('clientes');openClient(null)}
